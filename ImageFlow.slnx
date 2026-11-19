@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/ImageFlow.Api/ImageFlow.Api.csproj" />
+    <Project Path="src/backend/ImageFlow.Application/ImageFlow.Application.csproj" />
+    <Project Path="src/backend/ImageFlow.Domain/ImageFlow.Domain.csproj" />
+    <Project Path="src/backend/ImageFlow.Infrastructure/ImageFlow.Infrastructure.csproj" />
+    <Project Path="src/backend/ImageFlow.Worker/ImageFlow.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ImageFlow.IntegrationTests/ImageFlow.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

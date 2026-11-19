@@ -35,3 +35,9 @@ secrets/
 .vscode/
 .DS_Store
 Thumbs.db
+
+.cache/
+**/test-results/
+**/playwright-report/
+
+src/backend/ImageFlow.Api/wwwroot/

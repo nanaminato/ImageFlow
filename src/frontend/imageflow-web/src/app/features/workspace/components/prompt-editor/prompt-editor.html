@@ -1,0 +1,38 @@
+<section class="panel">
+  <h2>02 / Review prompts</h2>
+  <div class="plan-list">
+    @for (plan of plans(); track plan.id) {
+      <button mat-button (click)="selectPlan.emit(plan.id)">{{ plan.theme }}</button>
+    }
+  </div>
+  @if (selected(); as plan) {
+    <h3>{{ plan.theme }}</h3>
+    @for (prompt of plan.prompts; track prompt.id; let i = $index) {
+      <mat-form-field appearance="outline"
+        ><mat-label>Prompt {{ i + 1 }}</mat-label
+        ><textarea
+          matInput
+          [ngModel]="prompt.text"
+          (ngModelChange)="edit.emit({ id: prompt.id, text: $event })"
+          rows="4"
+          maxlength="8000"
+          [disabled]="queuedIds().has(plan.id) || busy()"
+        ></textarea>
+      </mat-form-field>
+      @if (!queuedIds().has(plan.id)) {
+        <button mat-button (click)="save.emit(prompt)" [disabled]="busy()">Save prompt</button>
+      }
+    }
+    <div>
+      <button
+        mat-flat-button
+        (click)="enqueue.emit(plan)"
+        [disabled]="busy() || queuedIds().has(plan.id)"
+      >
+        {{ queuedIds().has(plan.id) ? 'Already queued' : 'Save & queue collection' }}
+      </button>
+    </div>
+  } @else {
+    <p class="empty">Your saved prompt plans will appear here. Select a plan to review it.</p>
+  }
+</section>

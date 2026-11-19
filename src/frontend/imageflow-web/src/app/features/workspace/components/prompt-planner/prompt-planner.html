@@ -1,0 +1,36 @@
+<section class="panel">
+  <h2>01 / Plan a collection</h2>
+  <form (ngSubmit)="submit()">
+    <mat-form-field appearance="outline"
+      ><mat-label>Theme & constraints</mat-label
+      ><textarea
+        matInput
+        name="theme"
+        [(ngModel)]="theme"
+        required
+        maxlength="2000"
+        rows="3"
+        placeholder="Quiet coastal towns, watercolor, morning light"
+      ></textarea>
+    </mat-form-field>
+    <div class="form-bottom">
+      <mat-form-field appearance="outline" class="count"
+        ><mat-label>Images</mat-label
+        ><input
+          matInput
+          name="count"
+          type="number"
+          [(ngModel)]="count"
+          min="1"
+          max="20"
+          required /></mat-form-field
+      ><button mat-flat-button [disabled]="busy() || !theme.trim() || count < 1 || count > 20">
+        Plan prompts
+      </button>
+    </div>
+  </form>
+  <p class="hint">
+    Mock mode creates labeled SVG previews without paid API calls. OpenAI mode uses your server
+    configuration.
+  </p>
+</section>

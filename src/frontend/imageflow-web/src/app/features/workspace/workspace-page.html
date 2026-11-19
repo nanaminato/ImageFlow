@@ -1,0 +1,37 @@
+<header>
+  <div class="brand">◈ ImageFlow</div>
+  <span class="connection">{{ store.connected() ? '● Live' : '○ Reconnecting' }}</span
+  ><span>{{ store.providerLabel() }}</span>
+</header>
+<main>
+  <div class="intro">
+    <span class="eyebrow">GENERATION WORKSPACE</span>
+    <h1>From an idea to a collection.</h1>
+    <p>Plan your prompts, review the details, and let the queue do the work.</p>
+  </div>
+  @if (store.error()) {
+    <div class="error" role="alert">{{ store.error() }}</div>
+  }
+  @if (store.busy()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  <app-prompt-planner [busy]="store.busy()" (create)="store.createPlan($event)" />
+  <div class="workspace">
+    <app-prompt-editor
+      [plans]="store.plans()"
+      [selected]="store.selectedPlan()"
+      [queuedIds]="store.queuedPlanIds()"
+      [busy]="store.busy()"
+      (selectPlan)="store.selectPlan($event)"
+      (edit)="store.editPrompt($event.id, $event.text)"
+      (save)="store.savePrompt($event)"
+      (enqueue)="store.enqueue($event)"
+    />
+    <app-job-queue
+      [jobs]="store.jobs()"
+      [busy]="store.busy()"
+      (control)="store.controlJob($event.job, $event.action)"
+    />
+  </div>
+  <app-image-gallery [images]="store.images()" />
+</main>

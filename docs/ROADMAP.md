@@ -1,5 +1,15 @@
 # ImageFlow implementation roadmap
 
+## Implementation status — 2026-11-19
+
+Architecture follow-up: backend split into Domain/Application/Infrastructure/Worker/API assemblies; Angular split into a lazy workspace feature, NgRx Signal Store, HTTP/SSE data access and four presentational components. An explicitly configured compatible HTTPS provider is supported alongside the official OpenAI provider. Live testing remains opt-in.
+
+M1 is implemented: runnable .NET 10 API, verified stable Angular/Material 22.3.0, EF Core SQLite migrations, configuration, JSON logs, local CORS, OpenAPI, health, automated backend/browser tests and reproducible README commands.
+
+The first vertical slice also implements selected M2–M4 work: Mock/OpenAI provider interfaces, persisted editable prompt plans, immutable queued prompt snapshots, finite durable jobs, attempt history, bounded configured concurrency, pause/resume/cancel, uncertain-outcome recovery, 429 backoff, REST/SSE and Angular gallery/download.
+
+Remaining work is not marked complete: bounded continuous generation, runtime concurrency editing/persisted settings, priorities and intervals, budget reservations/caps and estimated costs, planning usage history, richer batching/deduplication, manual uncertain-outcome reconciliation, authentication and deployment hardening. Current finite plans allow 1–20 images. Measured image usage is retained separately; no billed-cost claim is made.
+
 ## M1 — Executable foundation
 - Create a .NET 10 solution and compilable ASP.NET Core API.
 - Create an Angular application using the newest verified **stable** release and Angular Material.

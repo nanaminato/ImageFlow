@@ -1,0 +1,15 @@
+<section class="panel">
+  <h2>Your collection</h2>
+  <div class="gallery">
+    @for (task of images(); track task.id) {
+      <figure>
+        <a [href]="'/api/v1/images/' + task.id" target="_blank" rel="noopener"
+          ><img [src]="'/api/v1/images/' + task.id" [alt]="task.promptText" loading="lazy"
+        /></a>
+        <figcaption>
+          {{ task.promptText }}<br /><a [href]="'/api/v1/images/' + task.id" download>Download</a>
+        </figcaption>
+      </figure>
+    }
+  </div>
+</section>

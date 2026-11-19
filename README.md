@@ -1,36 +1,182 @@
 # ImageFlow
 
-An extensible, persistent AI image-generation task engine.
+A reusable, local-first image-generation engine built with **.NET 10, ASP.NET Core, EF Core SQLite, Angular 22.3.0, Angular Material and NgRx Signal Store 22**. Angular's stable npm `latest` tag was verified on 2026-11-19; the lockfile pins the resolved dependencies.
 
-## Planned stack
+## Implemented
 
-- Backend: C# / .NET 10, ASP.NET Core Web API
-- Database: SQLite with Entity Framework Core
-- Frontend: latest stable Angular and Angular Material
-- Image/text providers: OpenAI official API with replaceable provider interfaces
-- Background execution: async workers, resumable durable queue, adjustable concurrency
+- Theme → persisted prompt plan → editable review → idempotent finite job → generated image gallery/download.
+- Separate prompt-planning and image-generation interfaces, deterministic Mock provider, and official OpenAI HTTP API adapters (Responses + Images).
+- SQLite-backed jobs, prompt snapshots, task transitions, attempts, retry deadlines, image paths and raw provider image-usage metadata. Versioned EF migrations apply on startup.
+- Bounded outstanding image requests (1–8, configured on startup), pause/resume/cancel, restart recovery, explicit uncertain outcomes, rate-limit backoff and Retry-After.
+- REST, OpenAPI JSON, health checks, SSE job snapshots, structured JSON console logs and local development CORS.
+- Angular prompt editor, queue controls, attempt/error details, live progress and image collection.
 
-## Scope
+Mock mode is the default. Its generated images are **labeled SVG previews**, not AI-generated images. Startup and automated tests make no paid requests. OpenAI mode makes paid calls only when you explicitly plan or enqueue work.
 
-ImageFlow starts as a reusable generation engine, **not** a story-writing application. Its first milestones are:
+## Requirements and setup
 
-1. Generate and persist structured image prompts from a topic.
-2. Queue image generation from those prompts.
-3. Support finite and continuous workflows with explicit budget/quantity safety limits.
-4. Resume pending work after restart; pause, cancel, retry, and inspect tasks.
-5. Provide an API and Angular management UI.
+Install .NET SDK 10 and Node.js 24.15+ (tested: SDK 10.0.400, Node 24.15.0, npm 11.12.1). Use one API process per database; distributed/multiple-worker hosting is not supported.
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for implementation milestones, and [AGENTS.md](AGENTS.md) for Codex guidance.
+From the repository root:
 
-> Initial repository scaffold only. The application has not yet been implemented.
-
-## Getting started with Codex
-
-Clone this repository and open its root directory in Codex:
-
-```bash
-git clone https://github.com/nanaminato/ImageFlow.git
-cd ImageFlow
+```powershell
+dotnet restore
+dotnet build
+dotnet test --no-restore
+npm ci --prefix src/frontend/imageflow-web
+npm test --prefix src/frontend/imageflow-web
+npm run build --prefix src/frontend/imageflow-web
 ```
 
-Ask Codex to implement the first milestone in `docs/ROADMAP.md` while following `AGENTS.md`. Once initialized, normal development commands should be documented here.
+Start the API in one terminal:
+
+```powershell
+dotnet run --project src/backend/ImageFlow.Api --launch-profile http
+```
+
+Start Angular in another:
+
+```powershell
+npm start --prefix src/frontend/imageflow-web
+```
+
+Open [the UI](http://localhost:4200), enter a theme, plan 1–20 prompts, edit them, then select **Save & queue collection**. Progress and image results update automatically. Existing plans and jobs reload after a refresh. API listens on [localhost:5080](http://localhost:5080); [health](http://localhost:5080/health) and [OpenAPI](http://localhost:5080/openapi/v1.json) are available. Angular's development proxy forwards `/api` to the API.
+
+Default data is `src/backend/ImageFlow.Api/data/`: SQLite database and `images/` files. Keep both together when backing up (stop the API first). Configure an absolute `Engine__DataDirectory` to move it. Never commit data or credentials. Relative data paths resolve from the API content root.
+
+### Architecture and navigation
+
+Backend responsibilities now live in real `Domain`, `Application`, `Infrastructure`, `Worker` and `Api` projects. `Program.cs` composes the app; endpoint modules handle HTTP, application services handle planning/job commands, and EF/provider adapters live in Infrastructure. Existing SQLite migrations retain their identities.
+
+Angular uses a lazy workspace route, NgRx Signal Store, a typed Angular HttpClient/SSE service, and separate planner/editor/queue/gallery components. Store state is read-only to components; prompt edits are immutable commands. See [architecture](docs/architecture.md) for the dependency map and file guide.
+
+### Configuration and real OpenAI calls
+
+ASP.NET Core configuration uses `Engine__...` environment variables. `.env.example` documents keys; the application does **not** automatically load `.env` files. Set variables in the API terminal, or use the ignored `src/backend/ImageFlow.Api/appsettings.Local.json` for local configuration. The API explicitly loads this file; environment variables and command-line arguments override it. `OPENAI_API_KEY` takes precedence over a local `Engine:ApiKey`. Local settings are excluded from build and publish output.
+
+```powershell
+$env:OPENAI_API_KEY = '<your key>'
+$env:Engine__Provider = 'OpenAI'
+$env:Engine__PromptModel = 'gpt-4.1-mini'
+$env:Engine__ImageModel = 'gpt-image-1.5'
+$env:Engine__ImageSize = '1024x1024'
+$env:Engine__MaxConcurrency = '2'
+$env:Engine__MaxAttempts = '3'
+dotnet run --project src/backend/ImageFlow.Api --launch-profile http
+```
+
+The adapter explicitly validates supported capabilities rather than accepting arbitrary models/options. This version supports structured prompt planning with `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`; PNG generation with `gpt-image-1.5` or `gpt-image-1-mini`, at `1024x1024`, `1536x1024`, or `1024x1536`. Other OpenAI models require an adapter capability update. Account access is validated by OpenAI on explicit requests. API keys are read from the environment or ignored local configuration, never sent to Angular or persisted in SQLite. Provider settings are read-only in the UI and take effect after restart.
+
+Official references: [Angular release policy](https://angular.dev/reference/releases), [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create), [OpenAI Images API](https://developers.openai.com/api/reference/resources/images/methods/generate).
+
+### Explicit third-party compatible service
+
+The official OpenAI provider remains available. To use an OpenAI-compatible gateway, explicitly set `Engine:Provider` to `OpenAICompatible` and configure `Engine:BaseUrl`. Example **without credentials**:
+
+```json
+{
+  "Engine": {
+    "Provider": "OpenAICompatible",
+    "BaseUrl": "https://your-provider.example/api/native/v1/",
+    "ApiKey": "SET_LOCALLY_ONLY",
+    "PromptModel": "gpt-4.1-mini",
+    "ImageModel": "gpt-image-1.5"
+  }
+}
+```
+
+Save this only as `src/backend/ImageFlow.Api/appsettings.Local.json` (already ignored). The configured service receives prompts and credentials for its own endpoint. Automatic redirects are disabled. The same explicit model/size validation applies; advertising a model in `/models` alone is not treated as proof of capability. Override `Engine__Provider=Mock` to return to free previews without removing your local settings.
+
+On 2026-11-19, the user-supplied replacement credential was verified against the supplied compatible service: model listing 200, text response 200, and one .NET API plan → persisted job → PNG flow Completed with one image attempt. Returned image usage was 1,399 total tokens, not a billed monetary cost. Credentials and full live results are not committed; local results are under `.cache/live-provider/`.
+
+Re-run only when paid use is explicitly intended:
+
+```powershell
+dotnet build
+python scripts/test-provider.py --allow-paid
+```
+
+This runs at most one persisted plan and one image, with a single allowed image attempt and no automatic resend. It launches a temporary API on localhost:5084 and writes SQLite, PNG, logs and a credential-free report under `.cache/`. In a restricted Windows environment, run it from a normal local terminal if the sandbox's Windows TLS stack cannot acquire credentials. Default backend, Store and browser tests always use Mock/intercepted providers.
+
+### Queue guarantees and limits
+
+Prompts are committed before enqueueing. A plan can create one job; repeating `POST /jobs` returns that job. Queueing freezes prompt editing and snapshots each prompt into its task. To generate another collection, create another plan.
+
+Pause and cancel stop new dispatches. Already-sent requests are allowed to finish and retain their results; cancellation cannot undo provider charges. Pause leaves pending work in place; resume dispatches it. On restart, Pending and RetryWaiting work continues, while Running tasks and attempts become **Unknown**. Unknown/failed jobs become NeedsAttention, with no automatic resend. Inspect provider records and local image files before manually creating replacement work; there is no claim of exactly-once remote execution.
+
+Only explicit HTTP 429 rejections retry automatically (bounded attempts, exponential backoff, honoring the longer Retry-After delta/date). Network interruption, timeout, 408, 5xx or an output-write failure are uncertain and do not retry automatically. Definitive provider rejections fail. Files are written before completion is committed; a crash between those operations may leave an orphan image for manual reconciliation. No remote call is enclosed in a long SQLite transaction.
+
+This release supports finite jobs of at most 20 images. **Continuous mode, runtime concurrency editing, priorities, monetary budget enforcement, text-planning usage history and cost estimates remain future work.** Image usage JSON is measured provider metadata, not billed cost; this release reports no dollar amounts. Planning is synchronous: an interrupted planning response may incur usage without a saved plan; it is never automatically retried.
+
+Local development only: there is no authentication. Keep the service bound to localhost; add authentication and deployment hardening before exposing it to other machines.
+
+## REST API
+
+All application endpoints use `/api/v1`:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST / GET | `/plans` | Plan prompts (`{"theme":"coast","count":3}`) / list plans |
+| GET | `/plans/{id}` | Read persisted plan |
+| PUT | `/prompts/{id}` | Edit unqueued prompt (`{"text":"..."}`) |
+| POST / GET | `/jobs` | Enqueue (`{"planId":"..."}`) / list jobs and attempts |
+| GET | `/jobs/{id}` | Job details |
+| POST | `/jobs/{id}/pause`, `/resume`, `/cancel` | Control dispatch |
+| GET | `/images`, `/images/{taskId}` | Image provenance / file |
+| GET | `/usage` | Image attempt history and raw measured usage |
+| GET | `/settings` | Non-secret effective configuration |
+| GET | `/events` | SSE `jobs` snapshot each second; reconnect gets current state |
+
+Example:
+
+```powershell
+$plan = Invoke-RestMethod http://localhost:5080/api/v1/plans -Method Post -ContentType application/json -Body '{"theme":"quiet coast","count":2}'
+Invoke-RestMethod http://localhost:5080/api/v1/jobs -Method Post -ContentType application/json -Body (@{planId=$plan.id} | ConvertTo-Json)
+```
+
+### Browser end-to-end test
+
+```powershell
+cd src/frontend/imageflow-web
+npx playwright install chromium
+npm run test:e2e
+```
+
+Playwright launches isolated Mock API/Angular servers, creates a plan, edits a prompt, queues it, waits for images and verifies refresh persistence. Test databases/screenshots live under `.cache/`. Alternatively set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an installed Chrome executable. Stop existing servers on ports 5080/4200 first. If your Windows sandbox prevents Playwright from shutting down spawned server trees, start the API (with a fresh Mock data directory) and Angular manually, set `IMAGEFLOW_E2E_EXTERNAL=1`, and run the same test. The verified sandbox browser run used this external-server mode.
+
+### Single-process static hosting
+
+```powershell
+npm run build --prefix src/frontend/imageflow-web
+New-Item -ItemType Directory -Force src/backend/ImageFlow.Api/wwwroot
+Copy-Item src/frontend/imageflow-web/dist/imageflow-web/browser/* src/backend/ImageFlow.Api/wwwroot -Recurse -Force
+dotnet publish src/backend/ImageFlow.Api -c Release -o .cache/publish
+cd .cache/publish
+dotnet ImageFlow.Api.dll --urls http://localhost:5080
+```
+
+Run the published app from its publish directory as above; set an absolute `Engine__DataDirectory` for a stable production data location. Static assets are included at publish time. Do not commit copied build output.
+
+### Database migrations
+
+```powershell
+dotnet tool restore
+dotnet ef migrations add YourChange --project src/backend/ImageFlow.Infrastructure --startup-project src/backend/ImageFlow.Api
+```
+
+Migrations are committed; startup runs `MigrateAsync`. Tests use isolated real SQLite files, not EF's in-memory provider. The backend test suite covers API flow, validation, idempotency, controls, bounded requests, restart recovery, rate limiting, unknown outcomes, SSE and OpenAI adapter contracts with an intercepted HTTP handler.
+
+### Windows sandbox cache/TLS workaround
+
+If your execution environment blocks the default user cache paths:
+
+```powershell
+$env:DOTNET_CLI_HOME = "$PWD/.cache/dotnet"
+$env:NUGET_PACKAGES = "$PWD/.cache/nuget"
+$env:NUGET_HTTP_CACHE_PATH = "$PWD/.cache/http"
+$env:npm_config_cache = "$PWD/.cache/npm"
+```
+
+In the Codex Windows sandbox, .NET's TLS stack returned `SEC_E_NO_CREDENTIALS`. `scripts/nuget-proxy.py` is an optional localhost-only development bridge using Python's verified HTTPS connection to NuGet. Run it in a separate terminal, then restore using a temporary config pointing at `http://127.0.0.1:8767/https/api.nuget.org/v3/index.json` with `allowInsecureConnections="true"`. The bridge omits repository-signature discovery because NuGet requires that resource to use HTTPS; do not use this workaround as your normal package-source configuration. Standard setup above uses official NuGet HTTPS directly.
+
+See [roadmap](docs/ROADMAP.md) and [architecture](docs/architecture.md) for implementation status and next steps.

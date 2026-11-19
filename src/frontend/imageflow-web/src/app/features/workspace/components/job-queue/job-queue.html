@@ -1,0 +1,53 @@
+<section class="panel">
+  <h2>03 / Generation queue</h2>
+  @for (job of jobs(); track job.id) {
+    <article class="job">
+      <div class="job-heading">
+        <code>{{ job.id.slice(0, 8) }}</code
+        ><span class="status">{{ job.status }}</span>
+      </div>
+      <p>{{ completed(job) }} / {{ job.tasks.length }} completed</p>
+      <mat-progress-bar mode="determinate" [value]="(100 * completed(job)) / job.tasks.length" />
+      <div class="actions">
+        @if (job.status === 'Active') {
+          <button mat-button (click)="control.emit({ job, action: 'pause' })" [disabled]="busy()">
+            Pause
+          </button>
+        }
+        @if (job.status === 'Paused') {
+          <button mat-button (click)="control.emit({ job, action: 'resume' })" [disabled]="busy()">
+            Resume
+          </button>
+        }
+        @if (job.status === 'Active' || job.status === 'Paused') {
+          <button mat-button (click)="control.emit({ job, action: 'cancel' })" [disabled]="busy()">
+            Cancel
+          </button>
+        }
+      </div>
+      @for (task of job.tasks; track task.id) {
+        <details>
+          <summary>{{ task.status }} · {{ task.promptText.slice(0, 55) }}</summary>
+          <p>{{ task.promptText }}</p>
+          @if (task.error) {
+            <p class="error">{{ task.error }}</p>
+          }
+          @for (attempt of task.attempts; track attempt.id) {
+            <p class="hint">
+              Attempt {{ attempt.id.slice(0, 8) }} · {{ attempt.model }} · {{ attempt.outcome }}
+            </p>
+            @if (attempt.usageJson) {
+              <pre>{{ attempt.usageJson }}</pre>
+            }
+          }
+        </details>
+      }
+    </article>
+  } @empty {
+    <p class="empty">Queue a reviewed plan to begin. Pending work is stored in SQLite.</p>
+  }
+  <p class="hint">
+    Pause/cancel stops future dispatch. Requests already sent finish and keep their results. Unknown
+    outcomes require checking provider records.
+  </p>
+</section>
