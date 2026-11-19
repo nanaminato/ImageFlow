@@ -11,5 +11,7 @@ public class Attempt
     public string Model { get; set; } = "";
     public string? RequestId { get; set; }
     public string? UsageJson { get; set; }
+    public decimal EstimatedCostUsd { get; set; }
+    public string CostDisposition { get; set; } = "Reserved";
     public string? Error { get; set; }
 }

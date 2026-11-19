@@ -23,7 +23,14 @@ namespace ImageFlow.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CostDisposition")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Error")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("EstimatedCostUsd")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("FinishedAt")
@@ -104,14 +111,45 @@ namespace ImageFlow.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("BudgetUsd")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("EstimatedCostPerImageUsd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("EstimatedExposureUsd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageSize")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxImages")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("PlanId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Status")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StopReason")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -158,6 +196,26 @@ namespace ImageFlow.Api.Migrations
                     b.HasIndex("PlanId");
 
                     b.ToTable("Prompts");
+                });
+
+            modelBuilder.Entity("ImageFlow.RuntimeSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("EstimatedCostPerImageUsd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxConcurrency")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RuntimeSettings");
                 });
 
             modelBuilder.Entity("ImageFlow.Attempt", b =>

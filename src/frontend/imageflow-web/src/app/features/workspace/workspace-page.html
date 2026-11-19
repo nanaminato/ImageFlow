@@ -1,7 +1,8 @@
 <header>
   <div class="brand">◈ ImageFlow</div>
-  <span class="connection">{{ store.connected() ? '● Live' : '○ Reconnecting' }}</span
-  ><span>{{ store.providerLabel() }}</span>
+  <span class="connection">{{ store.connected() ? '● Live' : '○ Reconnecting' }}</span><span>{{
+    store.providerLabel()
+  }}</span>
 </header>
 <main>
   <div class="intro">
@@ -15,17 +16,23 @@
   @if (store.busy()) {
     <mat-progress-bar mode="indeterminate" />
   }
+  <app-engine-settings
+    [settings]="store.settings()"
+    [busy]="store.busy()"
+    (save)="store.updateSettings($event)"
+  />
   <app-prompt-planner [busy]="store.busy()" (create)="store.createPlan($event)" />
   <div class="workspace">
     <app-prompt-editor
       [plans]="store.plans()"
+      [estimatedCostPerImage]="store.settings()?.estimatedCostPerImageUsd ?? 0"
       [selected]="store.selectedPlan()"
       [queuedIds]="store.queuedPlanIds()"
       [busy]="store.busy()"
       (selectPlan)="store.selectPlan($event)"
       (edit)="store.editPrompt($event.id, $event.text)"
       (save)="store.savePrompt($event)"
-      (enqueue)="store.enqueue($event)"
+      (enqueue)="store.enqueue($event.plan, $event.options)"
     />
     <app-job-queue
       [jobs]="store.jobs()"

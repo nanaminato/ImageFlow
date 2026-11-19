@@ -12,11 +12,10 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
         foreach (var task in tasks)
         {
             task.Status = "Unknown"; task.Error = "Process stopped during request. Inspect provider records before creating replacement work.";
-            foreach (var a in task.Attempts.Where(x => x.Outcome == "Running")) { a.Outcome = "Unknown"; a.FinishedAt = DateTime.UtcNow; a.Error = task.Error; }
+            foreach (var a in task.Attempts.Where(x => x.Outcome == "Running")) { a.Outcome = "Unknown"; a.FinishedAt = DateTime.UtcNow; a.Error = task.Error; a.CostDisposition = "Uncertain"; }
         }
         var jobs = await db.Jobs.Include(x => x.Tasks).Where(x => x.Status == "Active").ToListAsync(ct);
-        foreach (var job in jobs.Where(j => j.Tasks.All(t => t.Status is "Completed" or "Failed" or "Unknown" or "Cancelled")))
-            job.Status = job.Tasks.All(t => t.Status == "Completed") ? "Completed" : "NeedsAttention";
+        foreach (var job in jobs) JobLifecycle.Reconcile(job);
         await db.SaveChangesAsync(ct);
     }
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -28,7 +27,7 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
             while (!stoppingToken.IsCancellationRequested)
             {
                 foreach (var completed in active.Where(x => x.IsCompleted).ToArray()) { await completed; active.Remove(completed); }
-                while (active.Count < options.MaxConcurrency && !stoppingToken.IsCancellationRequested)
+                while (active.Count < 8 && !stoppingToken.IsCancellationRequested)
                 {
                     var id = await Claim(stoppingToken); if (id == null) break;
                     active.Add(Run(id.Value, stoppingToken));
@@ -45,12 +44,45 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
         try
         {
             using var scope = scopes.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<QueueDb>();
+            // Re-read the durable setting under the same gate as PUT /settings.
+            // Lowering the limit drains existing calls without cancelling paid requests.
+            var settings = await db.RuntimeSettings.SingleAsync(x => x.Id == 1, ct);
+            if (await db.Tasks.CountAsync(t => t.Status == "Running", ct) >= settings.MaxConcurrency) return null;
+            var jobs = await db.Jobs.Include(x => x.Tasks).Where(j => j.Status == "Active").OrderBy(j => j.CreatedAt).ToListAsync(ct);
             var now = DateTime.UtcNow;
-            var task = await db.Tasks.Where(t => (t.Status == "Pending" || t.Status == "RetryWaiting") && (t.NextAttemptAt == null || t.NextAttemptAt <= now) && db.Jobs.Any(j => j.Id == t.JobId && j.Status == "Active")).OrderBy(t => t.Id).FirstOrDefaultAsync(ct);
-            if (task == null) return null;
-            task.Status = "Running"; task.Error = null;
-            db.Attempts.Add(new Attempt { GenerationTaskId = task.Id, Provider = options.Provider, Model = options.Provider == "Mock" ? "mock-svg" : options.ImageModel });
-            await db.SaveChangesAsync(ct); return task.Id;
+            foreach (var job in jobs)
+            {
+                if (job.Provider != "" && (job.Provider != options.Provider || job.Model != options.ImageModel || job.ImageSize != options.ImageSize))
+                {
+                    JobLifecycle.Stop(job, "ProviderConfigurationChanged", true); continue;
+                }
+                JobLifecycle.Reconcile(job);
+                if (job.Status != "Active") continue;
+                if (!JobLifecycle.CanReserve(job))
+                {
+                    if (!job.Tasks.Any(t => t.Status == "Running")) JobLifecycle.Stop(job, "BudgetLimit");
+                    continue;
+                }
+                var task = job.Tasks.Where(t => (t.Status is "Pending" or "RetryWaiting") && (t.NextAttemptAt == null || t.NextAttemptAt <= now)).OrderBy(t => t.Id).FirstOrDefault();
+                if (task == null && job.Mode == "Continuous" && job.Tasks.Count < job.MaxImages && !job.Tasks.Any(t => t.Status == "RetryWaiting"))
+                {
+                    var prompts = await db.Prompts.Where(x => x.PlanId == job.PlanId).OrderBy(x => x.Id).ToListAsync(ct);
+                    if (prompts.Count == 0) { JobLifecycle.Stop(job, "MissingPrompts", true); continue; }
+                    var prompt = prompts[job.Tasks.Count % prompts.Count];
+                    task = new GenerationTask { JobId = job.Id, PromptId = prompt.Id, PromptText = prompt.Text };
+                    db.Tasks.Add(task);
+                    job.Tasks.Add(task);
+                }
+                if (task == null) continue;
+                task.Status = "Running"; task.Error = null;
+                job.EstimatedExposureUsd += job.EstimatedCostPerImageUsd;
+                db.Attempts.Add(new Attempt { GenerationTaskId = task.Id, Provider = options.Provider, Model = options.Provider == "Mock" ? "mock-svg" : options.ImageModel, EstimatedCostUsd = job.EstimatedCostPerImageUsd });
+                // Entity graph, reservation and Running attempt commit together, before the request.
+                await db.SaveChangesAsync(ct);
+                return task.Id;
+            }
+            await db.SaveChangesAsync(ct);
+            return null;
         }
         finally { gate.Mutex.Release(); }
     }
@@ -78,7 +110,7 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
             var attempt = task.Attempts.Single(x => x.Outcome == "Running"); attempt.FinishedAt = DateTime.UtcNow;
             if (error == null)
             {
-                task.Status = "Completed"; task.ImagePath = path; attempt.Outcome = "Completed"; attempt.UsageJson = result!.UsageJson; attempt.RequestId = result.RequestId;
+                task.Status = "Completed"; task.ImagePath = path; attempt.Outcome = "Completed"; attempt.UsageJson = result!.UsageJson; attempt.RequestId = result.RequestId; attempt.CostDisposition = "Retained";
             }
             else
             {
@@ -98,8 +130,16 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
                 log.LogWarning("Task {TaskId} ended with {Status}", id, task.Status);
             }
             var job = await db.Jobs.Include(x => x.Tasks).SingleAsync(x => x.Id == task.JobId);
+            if (error is ProviderFailure { Unknown: false })
+            {
+                // Explicit rejection (including 429): this attempt did not generate an image.
+                job.EstimatedExposureUsd -= attempt.EstimatedCostUsd;
+                attempt.EstimatedCostUsd = 0;
+                attempt.CostDisposition = "Released";
+            }
+            else if (error != null) attempt.CostDisposition = "Uncertain";
             if (job.Status == "Cancelled") foreach (var t in job.Tasks.Where(x => x.Status is "Pending" or "RetryWaiting")) t.Status = "Cancelled";
-            if (job.Status == "Active" && job.Tasks.All(x => x.Status is "Completed" or "Failed" or "Unknown" or "Cancelled")) job.Status = job.Tasks.All(x => x.Status == "Completed") ? "Completed" : "NeedsAttention";
+            JobLifecycle.Reconcile(job);
             await db.SaveChangesAsync();
         }
         finally { gate.Mutex.Release(); }

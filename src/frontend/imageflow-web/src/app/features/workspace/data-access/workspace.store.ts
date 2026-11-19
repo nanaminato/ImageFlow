@@ -12,6 +12,8 @@ import { Subscription } from 'rxjs';
 import { GenerationApi } from '../../../core/data-access/generation-api.service';
 import {
   EngineSettings,
+  SettingsInput,
+  JobOptions,
   Job,
   JobAction,
   Plan,
@@ -79,8 +81,12 @@ export const WorkspaceStore = signalStore(
       if (refreshing || destroyed) return;
       refreshing = true;
       try {
-        const jobs = await api.jobs();
-        if (!destroyed) patchState(store, { jobs });
+        const [jobs, settings] = await Promise.all([api.jobs(), api.settings()]);
+        if (!destroyed)
+          patchState(store, {
+            jobs,
+            ...(settings.revision > (store.settings()?.revision ?? -1) ? { settings } : {}),
+          });
       } finally {
         refreshing = false;
       }
@@ -111,18 +117,16 @@ export const WorkspaceStore = signalStore(
       },
       editPrompt(id: string, text: string) {
         patchState(store, {
-          plans: store
-            .plans()
-            .map((p) =>
-              store.queuedPlanIds().has(p.id)
-                ? p
-                : {
-                    ...p,
-                    prompts: p.prompts.map((prompt) =>
-                      prompt.id === id ? { ...prompt, text } : prompt,
-                    ),
-                  },
-            ),
+          plans: store.plans().map((p) =>
+            store.queuedPlanIds().has(p.id)
+              ? p
+              : {
+                  ...p,
+                  prompts: p.prompts.map((prompt) =>
+                    prompt.id === id ? { ...prompt, text } : prompt,
+                  ),
+                },
+          ),
         });
       },
       createPlan(input: PlanInput) {
@@ -137,11 +141,18 @@ export const WorkspaceStore = signalStore(
           await api.savePrompt(prompt);
         });
       },
-      enqueue(plan: Plan) {
+      updateSettings(input: SettingsInput) {
+        return perform(async () => {
+          const settings = await api.updateSettings(input);
+          if (!destroyed && settings.revision >= (store.settings()?.revision ?? -1))
+            patchState(store, { settings });
+        });
+      },
+      enqueue(plan: Plan, options: JobOptions = { mode: 'Finite' }) {
         return perform(async () => {
           if (store.queuedPlanIds().has(plan.id)) return;
           for (const prompt of plan.prompts) await api.savePrompt(prompt);
-          await api.enqueue(plan.id);
+          await api.enqueue(plan.id, options);
           await refresh();
         });
       },

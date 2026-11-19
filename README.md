@@ -7,7 +7,8 @@ A reusable, local-first image-generation engine built with **.NET 10, ASP.NET Co
 - Theme → persisted prompt plan → editable review → idempotent finite job → generated image gallery/download.
 - Separate prompt-planning and image-generation interfaces, deterministic Mock provider, and official OpenAI HTTP API adapters (Responses + Images).
 - SQLite-backed jobs, prompt snapshots, task transitions, attempts, retry deadlines, image paths and raw provider image-usage metadata. Versioned EF migrations apply on startup.
-- Bounded outstanding image requests (1–8, configured on startup), pause/resume/cancel, restart recovery, explicit uncertain outcomes, rate-limit backoff and Retry-After.
+- SQLite-persisted live image concurrency (1–8), pause/resume/cancel, restart recovery, explicit uncertain outcomes, rate-limit backoff and Retry-After.
+- Finite and continuous generation with immutable per-job estimates, quantity ceilings and atomic estimated-budget reservations.
 - REST, OpenAPI JSON, health checks, SSE job snapshots, structured JSON console logs and local development CORS.
 - Angular prompt editor, queue controls, attempt/error details, live progress and image collection.
 
@@ -65,7 +66,7 @@ $env:Engine__MaxAttempts = '3'
 dotnet run --project src/backend/ImageFlow.Api --launch-profile http
 ```
 
-The adapter explicitly validates supported capabilities rather than accepting arbitrary models/options. This version supports structured prompt planning with `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`; PNG generation with `gpt-image-1.5` or `gpt-image-1-mini`, at `1024x1024`, `1536x1024`, or `1024x1536`. Other OpenAI models require an adapter capability update. Account access is validated by OpenAI on explicit requests. API keys are read from the environment or ignored local configuration, never sent to Angular or persisted in SQLite. Provider settings are read-only in the UI and take effect after restart.
+The adapter explicitly validates supported capabilities rather than accepting arbitrary models/options. This version supports structured prompt planning with `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`; PNG generation with `gpt-image-1.5` or `gpt-image-1-mini`, at `1024x1024`, `1536x1024`, or `1024x1536`. Other OpenAI models require an adapter capability update. Account access is validated by OpenAI on explicit requests. API keys are read from the environment or ignored local configuration, never sent to Angular or persisted in SQLite. Provider/model/credential configuration remains server-side and takes effect after restart. Image concurrency and the per-request USD estimate are editable in the UI and persisted immediately. `Engine__MaxConcurrency` seeds a new database only; saved SQLite settings take precedence on subsequent starts.
 
 Official references: [Angular release policy](https://angular.dev/reference/releases), [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create), [OpenAI Images API](https://developers.openai.com/api/reference/resources/images/methods/generate).
 
@@ -106,7 +107,24 @@ Pause and cancel stop new dispatches. Already-sent requests are allowed to finis
 
 Only explicit HTTP 429 rejections retry automatically (bounded attempts, exponential backoff, honoring the longer Retry-After delta/date). Network interruption, timeout, 408, 5xx or an output-write failure are uncertain and do not retry automatically. Definitive provider rejections fail. Files are written before completion is committed; a crash between those operations may leave an orphan image for manual reconciliation. No remote call is enclosed in a long SQLite transaction.
 
-This release supports finite jobs of at most 20 images. **Continuous mode, runtime concurrency editing, priorities, monetary budget enforcement, text-planning usage history and cost estimates remain future work.** Image usage JSON is measured provider metadata, not billed cost; this release reports no dollar amounts. Planning is synchronous: an interrupted planning response may incur usage without a saved plan; it is never automatically retried.
+Finite plans contain 1–20 prompts. Continuous jobs cycle the saved, immutable prompts and require **both** `maxImages` (1–1000) and a positive `budgetUsd`. There are no repeated text-planning calls. The scheduler creates tasks lazily and stops when either cap is reached; pause/resume/cancel remain available. A plan still creates at most one job.
+
+Set a positive **Estimated USD per image request** in Engine settings before enabling continuous mode. Zero means no estimate is configured and continuous mode is rejected. Values accept up to six decimal places. Each job snapshots this estimate, provider/model/size, image-count limit and budget at creation. Later price edits affect new jobs only. Changing provider/model/size across restart stops incompatible queued jobs with NeedsAttention.
+
+Before every image attempt, the same SQLite commit stores the Running task, attempt and estimated USD reservation. Completed and Unknown requests retain their reservation; explicit rejections (including 429) release it, and a retry must reserve again. All outstanding reservations count toward the per-job estimate cap, so simultaneous dispatch cannot overrun it. Continuous Unknown/Failed results stop further dispatch with NeedsAttention. Already-sent calls may finish after a stop and keep their results/reservations. Restart does not reset budgets or quantity counts.
+
+The UI reports **estimated exposure**, including outstanding and uncertain attempts, separately from raw measured provider usage. These are user-supplied estimates, **not actual billed charges or a guarantee of the provider's bill**. The cap applies only to image requests; the explicit planning call before job creation is outside it. Choose estimates appropriate to your provider/model/options and use provider-side billing limits if an actual spending ceiling is required. No pricing is fetched or invented. Old migrated tasks are marked Unpriced and are not retrospectively assigned costs.
+
+Example, after creating a reviewed plan (the numbers below are only test estimates):
+
+```powershell
+Invoke-RestMethod http://localhost:5080/api/v1/settings -Method Put -ContentType application/json -Body '{"maxConcurrency":3,"estimatedCostPerImageUsd":0.01}'
+Invoke-RestMethod http://localhost:5080/api/v1/jobs -Method Post -ContentType application/json -Body (@{planId=$plan.id;mode='Continuous';maxImages=10;budgetUsd=0.025} | ConvertTo-Json)
+```
+
+With this test estimate, at most two images can be dispatched before `BudgetLimit`. A larger estimate budget stops at `QuantityLimit` instead. Terminal limit stops cannot be resumed into an unbounded run. Finite jobs may also supply `budgetUsd`; unsent work is cancelled on budget exhaustion.
+
+Remaining work includes priorities/intervals, text-planning usage history, provider-price-based estimates and billing reconciliation. Planning is synchronous: an interrupted planning response may incur usage without a saved plan; it is never automatically retried.
 
 Local development only: there is no authentication. Keep the service bound to localhost; add authentication and deployment hardening before exposing it to other machines.
 
@@ -119,12 +137,12 @@ All application endpoints use `/api/v1`:
 | POST / GET | `/plans` | Plan prompts (`{"theme":"coast","count":3}`) / list plans |
 | GET | `/plans/{id}` | Read persisted plan |
 | PUT | `/prompts/{id}` | Edit unqueued prompt (`{"text":"..."}`) |
-| POST / GET | `/jobs` | Enqueue (`{"planId":"..."}`) / list jobs and attempts |
+| POST / GET | `/jobs` | Enqueue (`{"planId":"...","mode":"Finite"}` or bounded Continuous options) / list jobs and attempts |
 | GET | `/jobs/{id}` | Job details |
 | POST | `/jobs/{id}/pause`, `/resume`, `/cancel` | Control dispatch |
 | GET | `/images`, `/images/{taskId}` | Image provenance / file |
 | GET | `/usage` | Image attempt history and raw measured usage |
-| GET | `/settings` | Non-secret effective configuration |
+| GET / PUT | `/settings` | Read effective configuration / persist `maxConcurrency` and `estimatedCostPerImageUsd` |
 | GET | `/events` | SSE `jobs` snapshot each second; reconnect gets current state |
 
 Example:
@@ -164,7 +182,7 @@ dotnet tool restore
 dotnet ef migrations add YourChange --project src/backend/ImageFlow.Infrastructure --startup-project src/backend/ImageFlow.Api
 ```
 
-Migrations are committed; startup runs `MigrateAsync`. Tests use isolated real SQLite files, not EF's in-memory provider. The backend test suite covers API flow, validation, idempotency, controls, bounded requests, restart recovery, rate limiting, unknown outcomes, SSE and OpenAI adapter contracts with an intercepted HTTP handler.
+Migrations are committed; startup runs `MigrateAsync`. Tests use isolated real SQLite files, not EF's in-memory provider. The backend test suite covers API flow, validation, idempotency, live concurrency changes, persisted settings, both continuous caps, concurrent reservations, rejection/refund/retry, pause/cancel, restart recovery with retained exposure, historical migration, SSE and intercepted OpenAI contracts. Store and browser tests cover setting persistence, continuous options, estimate stops and error recovery.
 
 ### Windows sandbox cache/TLS workaround
 

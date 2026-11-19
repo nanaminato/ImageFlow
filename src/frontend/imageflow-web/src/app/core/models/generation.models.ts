@@ -31,14 +31,36 @@ export interface Job {
   planId: string;
   status: JobStatus;
   tasks: GenerationTask[];
+  mode: 'Finite' | 'Continuous';
+  maxImages: number;
+  budgetUsd: number | null;
+  estimatedCostPerImageUsd: number;
+  estimatedExposureUsd: number;
+  stopReason: string | null;
 }
 export interface EngineSettings {
   provider: string;
   maxConcurrency: number;
   promptModel: string;
   imageModel: string;
+  estimatedCostPerImageUsd: number;
+  revision: number;
 }
 export interface PlanInput {
   theme: string;
   count: number;
+}
+
+export interface SettingsInput {
+  maxConcurrency: number;
+  estimatedCostPerImageUsd: number;
+}
+export interface JobOptions {
+  mode: 'Finite' | 'Continuous';
+  maxImages?: number;
+  budgetUsd?: number;
+}
+export interface EnqueueInput {
+  plan: Plan;
+  options: JobOptions;
 }

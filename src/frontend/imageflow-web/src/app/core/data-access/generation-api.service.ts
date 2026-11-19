@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Observable } from 'rxjs';
 import {
   EngineSettings,
+  SettingsInput,
+  JobOptions,
   Job,
   JobAction,
   Plan,
@@ -31,8 +33,11 @@ export class GenerationApi {
       this.http.put<Prompt>(`${this.base}/prompts/${prompt.id}`, { text: prompt.text }),
     );
   }
-  enqueue(planId: string) {
-    return firstValueFrom(this.http.post<Job>(`${this.base}/jobs`, { planId }));
+  updateSettings(settings: SettingsInput) {
+    return firstValueFrom(this.http.put<EngineSettings>(`${this.base}/settings`, settings));
+  }
+  enqueue(planId: string, options: JobOptions = { mode: 'Finite' }) {
+    return firstValueFrom(this.http.post<Job>(`${this.base}/jobs`, { planId, ...options }));
   }
   control(jobId: string, action: JobAction) {
     return firstValueFrom(this.http.post<Job>(`${this.base}/jobs/${jobId}/${action}`, {}));

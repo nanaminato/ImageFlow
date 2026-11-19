@@ -17,6 +17,8 @@ builder.Services.AddSingleton<QueueGate>();
 builder.Services.AddScoped<IGenerationRepository, GenerationRepository>();
 builder.Services.AddScoped<PromptPlanService>();
 builder.Services.AddScoped<JobService>();
+builder.Services.AddScoped<IRuntimeSettingsRepository, RuntimeSettingsRepository>();
+builder.Services.AddScoped<RuntimeSettingsService>();
 builder.Services.AddDbContext<QueueDb>((s, x) => x.UseSqlite($"Data Source={Path.Combine(s.GetRequiredService<EngineOptions>().DataDirectory, "imageflow.db")}"));
 builder.Services.AddSingleton<MockProvider>();
 builder.Services.AddHttpClient<OpenAiProvider>(c => c.Timeout = TimeSpan.FromMinutes(10))
@@ -33,6 +35,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<QueueDb>();
     await db.Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<RuntimeSettingsService>().Initialize(CancellationToken.None);
     await QueueWorker.Recover(db, CancellationToken.None);
 }
 app.UseExceptionHandler();
@@ -46,7 +49,7 @@ if (hasWebRoot)
 }
 app.MapGet("/health", async (QueueDb db) => await db.Database.CanConnectAsync() ? Results.Ok(new { status = "healthy" }) : Results.StatusCode(503));
 var api = app.MapGroup("/api/v1");
-api.MapGet("/settings", (EngineOptions options) => new { provider = options.Provider, promptModel = options.PromptModel, imageModel = options.ImageModel, maxConcurrency = options.MaxConcurrency, maxPrompts = 20, mode = "Finite" });
+api.MapSettingsEndpoints();
 
 api.MapPlanEndpoints();
 api.MapJobEndpoints();

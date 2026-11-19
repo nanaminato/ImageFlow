@@ -23,11 +23,54 @@
         <button mat-button (click)="save.emit(prompt)" [disabled]="busy()">Save prompt</button>
       }
     }
+    @if (!queuedIds().has(plan.id)) {
+      <label class="mode-label"
+        >Generation mode
+        <select aria-label="Generation mode" [(ngModel)]="mode" [disabled]="busy()">
+          <option value="Finite">Finite — once per prompt</option>
+          <option value="Continuous">Continuous — cycle reviewed prompts</option>
+        </select>
+      </label>
+      @if (mode === 'Continuous') {
+        <div class="limit-fields">
+          <mat-form-field appearance="outline"
+            ><mat-label>Maximum continuous images</mat-label
+            ><input
+              matInput
+              type="number"
+              [(ngModel)]="maxImages"
+              min="1"
+              max="1000"
+              step="1"
+              required
+          /></mat-form-field>
+          <mat-form-field appearance="outline"
+            ><mat-label>Estimated budget limit (USD)</mat-label
+            ><input
+              matInput
+              type="number"
+              [(ngModel)]="budget"
+              min="0.000001"
+              max="1000000"
+              step="0.000001"
+              required
+          /></mat-form-field>
+        </div>
+        <p class="hint">
+          Repeats these saved prompts until either limit is reached. Each outstanding request
+          reserves {{ estimatedCostPerImage() }} estimated USD. Provider bills may differ. Pause or
+          cancel at any time.
+        </p>
+        @if (estimatedCostPerImage() <= 0) {
+          <p class="error">Set a positive per-image estimate in Engine settings first.</p>
+        }
+      }
+    }
     <div>
       <button
         mat-flat-button
-        (click)="enqueue.emit(plan)"
-        [disabled]="busy() || queuedIds().has(plan.id)"
+        (click)="queue(plan)"
+        [disabled]="busy() || queuedIds().has(plan.id) || !validLimits()"
       >
         {{ queuedIds().has(plan.id) ? 'Already queued' : 'Save & queue collection' }}
       </button>

@@ -31,6 +31,7 @@ app/
       prompt-editor/
       job-queue/
       image-gallery/
+      engine-settings/
   shared/styles/workspace.css
 ```
 
@@ -45,7 +46,7 @@ NgRx Signal Store 22.0.1 owns plans, jobs, settings, selected plan, busy/error s
 5. On success, the worker writes an image via a temporary file and move, then records the path, Completed state, provider request ID and measured raw usage JSON in SQLite.
 6. Angular receives SSE current-state snapshots each second and reloads job details. Images are served by task ID; user-supplied paths are not accepted.
 
-EF Core SQLite migrations apply at startup. Tables: Plans, Prompts, Jobs, Tasks and Attempts. SQLite is the queue authority; there is no in-memory queue to lose across restarts. Images live on the local filesystem. All database writes are awaited.
+EF Core SQLite migrations apply at startup. Tables: Plans, Prompts, Jobs, Tasks, Attempts and RuntimeSettings. SQLite is the queue authority; there is no in-memory queue to lose across restarts. Images live on the local filesystem. All database writes are awaited.
 
 ## States and recovery
 
@@ -65,8 +66,16 @@ The application is for a single localhost API process and one SQLite database. L
 
 ## Usage and next increments
 
-Image attempts retain measured provider usage JSON and request IDs; Mock does not invent token counts or charges. No dollar cost is displayed. Planning usage and durable planning attempts, estimated-cost accounting, monetary reservations/caps, continuous bounded generation, runtime persisted concurrency controls, pagination, priority scheduling and manual reconciliation APIs remain future increments. Continuous mode must not be enabled until explicit safety caps are implemented.
+`RuntimeSettingsService` and its repository persist only a whitelisted concurrency value, user-supplied image-request USD estimate and revision in SQLite. Bootstrap concurrency seeds a fresh database; saved values win after restart. PUT settings and worker claims share the same gate, and each claim re-reads settings and counts persisted Running tasks. Lowering a limit drains outstanding requests; increasing it fills slots on the next scheduler tick. No API request is cancelled to enforce a smaller limit.
+
+`JobService` validates finite/continuous options and snapshots quantity, estimate, budget, provider/model/size before storing the job. Continuous mode cycles immutable reviewed prompts; it does not spend on automatic prompt planning. MaxImages (1–1000) and a positive estimate budget are mandatory. The worker appends a task only when a slot is available and both caps permit dispatch. Application-layer `JobLifecycle` centralizes terminal checks and stop reasons.
+
+The claim commit creates/updates the task, adds an attempt and increments EstimatedExposureUsd together. `exposure + perRequestEstimate <= budget` is checked with decimal arithmetic under the mutation gate before sending. Completion keeps the reservation; definitive rejections release it; ambiguous results retain it. Retry attempts reserve anew. Raw usage JSON is measured metadata, separately stored, and never converted to a billed-dollar claim. The estimate ceiling covers image attempts only; explicit initial planning is outside the job budget. Actual provider charges can differ from estimates.
+
+Unknown/Failed continuous work stops dispatch with NeedsAttention. QuantityLimit/BudgetLimit stops are terminal Completed jobs with an explicit StopReason; pause/cancel still preserve in-flight results. Recovery marks Running attempts Unknown/Uncertain without releasing exposure, reconciles continuous jobs and retains counters. Old work migrates to Finite with its persisted task count and Unpriced attempts; historical costs are not invented.
+
+Remaining increments: planning usage/durable planning attempts, provider-priced estimation, actual billing reconciliation, pagination, priority/interval scheduling and manual reconciliation APIs.
 
 ## Verification
 
-Backend integration tests use isolated physical SQLite databases and mock providers. NgRx Store unit tests cover immutable drafts, persistence ordering/idempotency, API error recovery and SSE teardown. They cover planning/editing/generation/download, idempotency, state controls, restart behavior, concurrency, Retry-After, Unknown safety and SSE. HTTP-handler tests verify the OpenAI adapters without network calls. Playwright exercises the Angular-to-API workflow using Mock mode and checks persistence after refresh, error display and mobile overflow. The separately invoked `scripts/test-provider.py --allow-paid` runs one real persisted plan/image flow and never retries; it is not part of automated tests. See README for reproducible commands.
+Backend integration tests use isolated physical SQLite databases and mock providers. NgRx Store unit tests cover immutable drafts, persistence ordering/idempotency, API error recovery and SSE teardown. They cover planning/editing/generation/download, idempotency, state controls, restart behavior, concurrency, Retry-After, Unknown safety and SSE. HTTP-handler tests verify the OpenAI adapters without network calls. Playwright exercises the Angular-to-API workflow using Mock mode and checks persistence after refresh, settings changes, continuous budget stops, error display and mobile overflow. The separately invoked `scripts/test-provider.py --allow-paid` runs one real persisted plan/image flow and never retries; it is not part of automated tests. See README for reproducible commands.

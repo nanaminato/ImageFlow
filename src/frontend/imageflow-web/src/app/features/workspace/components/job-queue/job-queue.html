@@ -3,11 +3,28 @@
   @for (job of jobs(); track job.id) {
     <article class="job">
       <div class="job-heading">
-        <code>{{ job.id.slice(0, 8) }}</code
-        ><span class="status">{{ job.status }}</span>
+        <code>{{ job.id.slice(0, 8) }}</code><span class="status">{{ job.status }}</span>
       </div>
-      <p>{{ completed(job) }} / {{ job.tasks.length }} completed</p>
-      <mat-progress-bar mode="determinate" [value]="(100 * completed(job)) / job.tasks.length" />
+      <p>
+        {{ completed(job) }} /
+        {{ job.mode === 'Continuous' ? job.maxImages : job.tasks.length }} completed
+      </p>
+      <p class="hint">
+        {{ job.mode }} · Estimated exposure (includes outstanding/unknown): ${{
+          job.estimatedExposureUsd | number: '1.2-6'
+        }}
+        @if (job.budgetUsd !== null) {
+          / ${{ job.budgetUsd | number: '1.2-6' }} estimate limit
+        }
+        · New-request estimate: ${{ job.estimatedCostPerImageUsd | number: '1.2-6' }}
+      </p>
+      @if (job.stopReason) {
+        <p class="stop-reason">Stopped: {{ job.stopReason }}</p>
+      }
+      <mat-progress-bar
+        mode="determinate"
+        [value]="(100 * completed(job)) / (job.maxImages || job.tasks.length || 1)"
+      />
       <div class="actions">
         @if (job.status === 'Active') {
           <button mat-button (click)="control.emit({ job, action: 'pause' })" [disabled]="busy()">
