@@ -9,11 +9,24 @@ export interface Plan {
 }
 export type JobStatus = 'Active' | 'Paused' | 'Cancelled' | 'Completed' | 'NeedsAttention';
 export type TaskStatus =
-  'Pending' | 'Running' | 'Completed' | 'Failed' | 'RetryWaiting' | 'Cancelled' | 'Unknown';
+  | 'Pending'
+  | 'Running'
+  | 'Completed'
+  | 'Failed'
+  | 'RetryWaiting'
+  | 'Cancelled'
+  | 'Unknown'
+  | 'Paused';
 export type JobAction = 'pause' | 'resume' | 'cancel';
 export interface Attempt {
   id: string;
   outcome: string;
+  startedAt: string;
+  finishedAt: string | null;
+  requestId: string | null;
+  provider: string;
+  estimatedCostUsd: number;
+  costDisposition: string;
   model: string;
   usageJson: string | null;
   error: string | null;
@@ -25,6 +38,8 @@ export interface GenerationTask {
   error: string | null;
   imagePath: string | null;
   attempts: Attempt[];
+  reviews: TaskReview[];
+  nextAttemptAt: string | null;
 }
 export interface Job {
   id: string;
@@ -63,4 +78,23 @@ export interface JobOptions {
 export interface EnqueueInput {
   plan: Plan;
   options: JobOptions;
+}
+
+export interface TaskReview {
+  id: string;
+  attemptId: string;
+  resolution: string;
+  evidence: string;
+  reviewedAt: string;
+  retryAuthorizedAt: string | null;
+}
+export interface ReviewInput {
+  attemptId: string;
+  resolution: string;
+  evidence: string;
+  confirmed: boolean;
+}
+export interface RetryInput {
+  attemptId: string;
+  confirmed: boolean;
 }

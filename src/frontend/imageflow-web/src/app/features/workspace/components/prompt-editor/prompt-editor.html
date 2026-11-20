@@ -1,72 +1,103 @@
 <section class="panel">
-  <h2>02 / Review prompts</h2>
-  <div class="plan-list">
-    @for (plan of plans(); track plan.id) {
-      <button mat-button (click)="selectPlan.emit(plan.id)">{{ plan.theme }}</button>
-    }
+  <div class="panel-head">
+    <span class="step">02</span>
+    <div class="panel-titles">
+      <h2>Review prompts</h2>
+      <p>Refine each prompt before queuing. Queued collections are locked.</p>
+    </div>
   </div>
-  @if (selected(); as plan) {
-    <h3>{{ plan.theme }}</h3>
-    @for (prompt of plan.prompts; track prompt.id; let i = $index) {
-      <mat-form-field appearance="outline"
-        ><mat-label>Prompt {{ i + 1 }}</mat-label
-        ><textarea
-          matInput
-          [ngModel]="prompt.text"
-          (ngModelChange)="edit.emit({ id: prompt.id, text: $event })"
-          rows="4"
-          maxlength="8000"
-          [disabled]="queuedIds().has(plan.id) || busy()"
-        ></textarea>
-      </mat-form-field>
-      @if (!queuedIds().has(plan.id)) {
-        <button mat-button (click)="save.emit(prompt)" [disabled]="busy()">Save prompt</button>
+  @if (plans().length) {
+    <div class="plan-list" aria-label="Saved prompt plans">
+      @for (plan of plans(); track plan.id) {
+        <button
+          mat-button
+          type="button"
+          class="plan-chip"
+          [class.is-active]="plan.id === selected()?.id"
+          (click)="selectPlan.emit(plan.id)"
+        >
+          {{ plan.theme }}
+        </button>
       }
+    </div>
+  }
+  @if (selected(); as plan) {
+    <div class="editor-heading">
+      <h3>{{ plan.theme }}</h3>
+      @if (queuedIds().has(plan.id)) {
+        <span class="status" data-status="Queued">Queued</span>
+      }
+    </div>
+    @for (prompt of plan.prompts; track prompt.id; let i = $index) {
+      <div class="prompt-block">
+        <mat-form-field appearance="outline">
+          <mat-label>Prompt {{ i + 1 }}</mat-label>
+          <textarea
+            matInput
+            [ngModel]="prompt.text"
+            (ngModelChange)="edit.emit({ id: prompt.id, text: $event })"
+            rows="4"
+            maxlength="8000"
+            [disabled]="queuedIds().has(plan.id) || busy()"
+          ></textarea>
+        </mat-form-field>
+        @if (!queuedIds().has(plan.id)) {
+          <div class="prompt-actions">
+            <button mat-button type="button" (click)="save.emit(prompt)" [disabled]="busy()">
+              Save prompt
+            </button>
+          </div>
+        }
+      </div>
     }
     @if (!queuedIds().has(plan.id)) {
-      <label class="mode-label"
-        >Generation mode
-        <select aria-label="Generation mode" [(ngModel)]="mode" [disabled]="busy()">
-          <option value="Finite">Finite — once per prompt</option>
-          <option value="Continuous">Continuous — cycle reviewed prompts</option>
-        </select>
-      </label>
-      @if (mode === 'Continuous') {
-        <div class="limit-fields">
-          <mat-form-field appearance="outline"
-            ><mat-label>Maximum continuous images</mat-label
-            ><input
-              matInput
-              type="number"
-              [(ngModel)]="maxImages"
-              min="1"
-              max="1000"
-              step="1"
-              required
-          /></mat-form-field>
-          <mat-form-field appearance="outline"
-            ><mat-label>Estimated budget limit (USD)</mat-label
-            ><input
-              matInput
-              type="number"
-              [(ngModel)]="budget"
-              min="0.000001"
-              max="1000000"
-              step="0.000001"
-              required
-          /></mat-form-field>
-        </div>
-        <p class="hint">
-          Repeats these saved prompts until either limit is reached. Each outstanding request
-          reserves {{ estimatedCostPerImage() }} estimated USD. Provider bills may differ. Pause or
-          cancel at any time.
-        </p>
-        @if (estimatedCostPerImage() <= 0) {
-          <p class="error">Set a positive per-image estimate in Engine settings first.</p>
+      <div class="mode-block">
+        <label class="mode-label"
+          >Generation mode
+          <select aria-label="Generation mode" [(ngModel)]="mode" [disabled]="busy()">
+            <option value="Finite">Finite — once per prompt</option>
+            <option value="Continuous">Continuous — cycle reviewed prompts</option>
+          </select>
+        </label>
+        @if (mode === 'Continuous') {
+          <div class="limit-fields">
+            <mat-form-field appearance="outline"
+              ><mat-label>Maximum continuous images</mat-label
+              ><input
+                matInput
+                type="number"
+                [(ngModel)]="maxImages"
+                min="1"
+                max="1000"
+                step="1"
+                required
+            /></mat-form-field>
+            <mat-form-field appearance="outline"
+              ><mat-label>Estimated budget limit (USD)</mat-label
+              ><input
+                matInput
+                type="number"
+                [(ngModel)]="budget"
+                min="0.000001"
+                max="1000000"
+                step="0.000001"
+                required
+            /></mat-form-field>
+          </div>
+          <p class="hint">
+            Repeats these saved prompts until either limit is reached. Each outstanding request
+            reserves {{ estimatedCostPerImage() }} estimated USD. Provider bills may differ. Pause
+            or cancel at any time.
+          </p>
+          @if (estimatedCostPerImage() <= 0) {
+            <p class="error">
+              Set a positive per-image estimate in Engine settings (header) before continuous mode.
+            </p>
+          }
         }
-      }
+      </div>
     }
-    <div>
+    <div class="queue-action">
       <button
         mat-flat-button
         (click)="queue(plan)"
@@ -76,6 +107,8 @@
       </button>
     </div>
   } @else {
-    <p class="empty">Your saved prompt plans will appear here. Select a plan to review it.</p>
+    <div class="empty-state">
+      <p class="empty">Your saved prompt plans will appear here. Select a plan to review it.</p>
+    </div>
   }
 </section>

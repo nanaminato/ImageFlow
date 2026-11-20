@@ -1,15 +1,45 @@
 <section class="panel">
-  <h2>Your collection</h2>
-  <div class="gallery">
-    @for (task of images(); track task.id) {
-      <figure>
-        <a [href]="'/api/v1/images/' + task.id" target="_blank" rel="noopener"
-          ><img [src]="'/api/v1/images/' + task.id" [alt]="task.promptText" loading="lazy"
-        /></a>
-        <figcaption>
-          {{ task.promptText }}<br /><a [href]="'/api/v1/images/' + task.id" download>Download</a>
-        </figcaption>
-      </figure>
-    }
+  <div class="panel-head">
+    <span class="step">04</span>
+    <div class="panel-titles">
+      <h2>Your collection</h2>
+      <p>
+        @if (images().length) {
+          {{ images().length }} generated image{{ images().length === 1 ? '' : 's' }}.
+        } @else {
+          Finished images will land here, ready to open or download.
+        }
+      </p>
+    </div>
   </div>
+  @if (images().length) {
+    <div class="gallery">
+      @for (task of images(); track task.id) {
+        <figure>
+          <a class="image-link" [href]="'/api/v1/images/' + task.id" target="_blank" rel="noopener">
+            <img [src]="'/api/v1/images/' + task.id" [alt]="task.promptText" loading="lazy" />
+          </a>
+          <figcaption>
+            {{ task.promptText }}<br />
+            <a [href]="'/api/v1/images/' + task.id" download>Download</a>
+          </figcaption>
+        </figure>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        aria-hidden="true"
+      >
+        <rect x="3" y="4" width="18" height="16" rx="3" />
+        <circle cx="9" cy="10" r="1.8" />
+        <path d="m4 18 5-5 4 4 2.5-2.5L20 19" />
+      </svg>
+      <p>No images yet. Plan a collection and queue it to get started.</p>
+    </div>
+  }
 </section>

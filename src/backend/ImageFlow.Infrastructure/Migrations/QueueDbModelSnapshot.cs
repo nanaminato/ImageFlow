@@ -218,6 +218,42 @@ namespace ImageFlow.Api.Migrations
                     b.ToTable("RuntimeSettings");
                 });
 
+            modelBuilder.Entity("ImageFlow.TaskReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("GenerationTaskId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Resolution")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RetryAuthorizedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ReviewedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttemptId")
+                        .IsUnique();
+
+                    b.HasIndex("GenerationTaskId");
+
+                    b.ToTable("TaskReviews");
+                });
+
             modelBuilder.Entity("ImageFlow.Attempt", b =>
                 {
                     b.HasOne("ImageFlow.GenerationTask", null)
@@ -245,9 +281,26 @@ namespace ImageFlow.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ImageFlow.TaskReview", b =>
+                {
+                    b.HasOne("ImageFlow.Attempt", null)
+                        .WithMany()
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ImageFlow.GenerationTask", null)
+                        .WithMany("Reviews")
+                        .HasForeignKey("GenerationTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ImageFlow.GenerationTask", b =>
                 {
                     b.Navigation("Attempts");
+
+                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("ImageFlow.Job", b =>

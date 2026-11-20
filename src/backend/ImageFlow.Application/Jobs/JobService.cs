@@ -46,10 +46,12 @@ public sealed class JobService(IGenerationRepository repository, QueueGate gate,
         {
             var job = await repository.GetJob(id, ct);
             if (job == null) return new(Failure: FailureKind.NotFound);
+            if (action == "resume" && job.Tasks.Any(t => t.Status is "Unknown" or "Paused"))
+                return new(Failure: FailureKind.Conflict, Message: "Resolve Unknown tasks and explicitly authorize reviewed retries before resuming.");
             if (job.Status is "Completed" or "Cancelled" or "NeedsAttention") return new(Failure: FailureKind.Conflict, Message: "Terminal jobs cannot be resumed; Unknown requests require manual provider reconciliation.");
             job.Status = action == "pause" ? "Paused" : action == "resume" ? "Active" : "Cancelled";
             if (action == "cancel") job.StopReason = "ManualCancellation";
-            if (action == "cancel") foreach (var task in job.Tasks.Where(x => x.Status is "Pending" or "RetryWaiting")) task.Status = "Cancelled";
+            if (action == "cancel") foreach (var task in job.Tasks.Where(x => x.Status is "Pending" or "RetryWaiting" or "Paused")) task.Status = "Cancelled";
             if (action == "resume") JobLifecycle.Reconcile(job);
             await repository.SaveChanges(ct);
             return new(job);

@@ -2,6 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Observable } from 'rxjs';
 import {
+  GenerationTask,
+  ReviewInput,
+  RetryInput,
   EngineSettings,
   SettingsInput,
   JobOptions,
@@ -41,6 +44,17 @@ export class GenerationApi {
   }
   control(jobId: string, action: JobAction) {
     return firstValueFrom(this.http.post<Job>(`${this.base}/jobs/${jobId}/${action}`, {}));
+  }
+  task(id: string) {
+    return firstValueFrom(this.http.get<GenerationTask>(`${this.base}/tasks/${id}`));
+  }
+  reviewTask(id: string, input: ReviewInput) {
+    return firstValueFrom(
+      this.http.post<GenerationTask>(`${this.base}/tasks/${id}/reviews`, input),
+    );
+  }
+  retryTask(id: string, input: RetryInput) {
+    return firstValueFrom(this.http.post<GenerationTask>(`${this.base}/tasks/${id}/retry`, input));
   }
   events(): Observable<boolean> {
     return new Observable((subscriber) => {

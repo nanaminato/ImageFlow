@@ -41,7 +41,7 @@ Start Angular in another:
 npm start --prefix src/frontend/imageflow-web
 ```
 
-Open [the UI](http://localhost:4200), enter a theme, plan 1–20 prompts, edit them, then select **Save & queue collection**. Progress and image results update automatically. Existing plans and jobs reload after a refresh. API listens on [localhost:5080](http://localhost:5080); [health](http://localhost:5080/health) and [OpenAPI](http://localhost:5080/openapi/v1.json) are available. Angular's development proxy forwards `/api` to the API.
+Open [the UI](http://localhost:4200), enter a theme, plan 1–20 prompts, edit them, then select **Save & queue collection**. Use **Settings** in the header to open the engine-settings dialog for concurrency and the per-image estimate; configuration stays out of the main workspace. Progress and image results update automatically. Existing plans and jobs reload after a refresh. API listens on [localhost:5080](http://localhost:5080); [health](http://localhost:5080/health) and [OpenAPI](http://localhost:5080/openapi/v1.json) are available. Angular's development proxy forwards `/api` to the API.
 
 Default data is `src/backend/ImageFlow.Api/data/`: SQLite database and `images/` files. Keep both together when backing up (stop the API first). Configure an absolute `Engine__DataDirectory` to move it. Never commit data or credentials. Relative data paths resolve from the API content root.
 
@@ -66,7 +66,7 @@ $env:Engine__MaxAttempts = '3'
 dotnet run --project src/backend/ImageFlow.Api --launch-profile http
 ```
 
-The adapter explicitly validates supported capabilities rather than accepting arbitrary models/options. This version supports structured prompt planning with `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`; PNG generation with `gpt-image-1.5` or `gpt-image-1-mini`, at `1024x1024`, `1536x1024`, or `1024x1536`. Other OpenAI models require an adapter capability update. Account access is validated by OpenAI on explicit requests. API keys are read from the environment or ignored local configuration, never sent to Angular or persisted in SQLite. Provider/model/credential configuration remains server-side and takes effect after restart. Image concurrency and the per-request USD estimate are editable in the UI and persisted immediately. `Engine__MaxConcurrency` seeds a new database only; saved SQLite settings take precedence on subsequent starts.
+The adapter explicitly validates supported capabilities rather than accepting arbitrary models/options. This version supports structured prompt planning with `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`; PNG generation with `gpt-image-1.5` or `gpt-image-1-mini`, at `1024x1024`, `1536x1024`, or `1024x1536`. Other OpenAI models require an adapter capability update. Account access is validated by OpenAI on explicit requests. API keys are read from the environment or ignored local configuration, never sent to Angular or persisted in SQLite. Provider/model/credential configuration remains server-side and takes effect after restart. Image concurrency and the per-request USD estimate are editable from the header **Settings** dialog and persisted immediately. `Engine__MaxConcurrency` seeds a new database only; saved SQLite settings take precedence on subsequent starts.
 
 Official references: [Angular release policy](https://angular.dev/reference/releases), [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create), [OpenAI Images API](https://developers.openai.com/api/reference/resources/images/methods/generate).
 
@@ -103,13 +103,13 @@ This runs at most one persisted plan and one image, with a single allowed image 
 
 Prompts are committed before enqueueing. A plan can create one job; repeating `POST /jobs` returns that job. Queueing freezes prompt editing and snapshots each prompt into its task. To generate another collection, create another plan.
 
-Pause and cancel stop new dispatches. Already-sent requests are allowed to finish and retain their results; cancellation cannot undo provider charges. Pause leaves pending work in place; resume dispatches it. On restart, Pending and RetryWaiting work continues, while Running tasks and attempts become **Unknown**. Unknown/failed jobs become NeedsAttention, with no automatic resend. Inspect provider records and local image files before manually creating replacement work; there is no claim of exactly-once remote execution.
+Pause and cancel stop new dispatches. Already-sent requests are allowed to finish and retain their results; cancellation cannot undo provider charges. Pause leaves pending work in place; resume dispatches it. On restart, Pending and RetryWaiting work continues, while Running tasks and attempts become **Unknown**. Unknown/failed jobs become NeedsAttention, with no automatic resend. Use the manual task review workflow below before authorizing any replacement request; there is no claim of exactly-once remote execution.
 
 Only explicit HTTP 429 rejections retry automatically (bounded attempts, exponential backoff, honoring the longer Retry-After delta/date). Network interruption, timeout, 408, 5xx or an output-write failure are uncertain and do not retry automatically. Definitive provider rejections fail. Files are written before completion is committed; a crash between those operations may leave an orphan image for manual reconciliation. No remote call is enclosed in a long SQLite transaction.
 
 Finite plans contain 1–20 prompts. Continuous jobs cycle the saved, immutable prompts and require **both** `maxImages` (1–1000) and a positive `budgetUsd`. There are no repeated text-planning calls. The scheduler creates tasks lazily and stops when either cap is reached; pause/resume/cancel remain available. A plan still creates at most one job.
 
-Set a positive **Estimated USD per image request** in Engine settings before enabling continuous mode. Zero means no estimate is configured and continuous mode is rejected. Values accept up to six decimal places. Each job snapshots this estimate, provider/model/size, image-count limit and budget at creation. Later price edits affect new jobs only. Changing provider/model/size across restart stops incompatible queued jobs with NeedsAttention.
+Set a positive **Estimated USD per image request** in the header **Settings** dialog before enabling continuous mode. Zero means no estimate is configured and continuous mode is rejected. Values accept up to six decimal places. Each job snapshots this estimate, provider/model/size, image-count limit and budget at creation. Later price edits affect new jobs only. Changing provider/model/size across restart stops incompatible queued jobs with NeedsAttention.
 
 Before every image attempt, the same SQLite commit stores the Running task, attempt and estimated USD reservation. Completed and Unknown requests retain their reservation; explicit rejections (including 429) release it, and a retry must reserve again. All outstanding reservations count toward the per-job estimate cap, so simultaneous dispatch cannot overrun it. Continuous Unknown/Failed results stop further dispatch with NeedsAttention. Already-sent calls may finish after a stop and keep their results/reservations. Restart does not reset budgets or quantity counts.
 
@@ -128,6 +128,22 @@ Remaining work includes priorities/intervals, text-planning usage history, provi
 
 Local development only: there is no authentication. Keep the service bound to localhost; add authentication and deployment hardening before exposing it to other machines.
 
+## Manual Unknown reconciliation
+
+Expand a task in the queue to inspect its immutable prompt, task/attempt IDs, start/end timestamps, provider/model, provider request ID when available, errors, next automatic retry deadline, measured usage and estimated reservation disposition. The history keeps original Unknown outcomes even after a manual decision.
+
+1. Check the provider's request/output history **and billing records**. The app does not verify these records for you. Wait until all in-flight requests in the same job settle.
+2. Record evidence and explicitly confirm one conclusion:
+   - `Generated`: mark the task Completed, retain its estimate, and never resend it. This does not import a remote image or manufacture a local image; retrieve missing output from the provider separately.
+   - `NotGeneratedNotCharged`: only after confirming both conditions, release that attempt's **estimate**, move the task to Paused and keep the job paused. This is not a billing refund.
+   - `Abandon`: cancel this task while retaining uncertain exposure; never resend it.
+3. For a confirmed ungenerated/uncharged task, separately select **Authorize reviewed retry** and acknowledge a new potentially charged request. This changes only that task to Pending and records the authorization time. The job stays paused.
+4. Resolve other Unknown tasks and authorize any reviewed Paused tasks, then explicitly Resume the job. Existing quantity limits, budget reservations, configured attempt count and provider/model/size compatibility still apply. Cancelled jobs cannot be revived.
+
+Review and retry commands bind to the latest attempt ID. Stale/duplicate submissions return 409; a unique review-per-attempt index and shared queue mutation gate prevent duplicate estimate releases or authorizations. Evidence and review/authorization timestamps persist in SQLite across restart. Conclusions are recorded once; the UI does not offer a force-retry or an override for an unresolved Unknown outcome. Resuming never retries the historical Unknown attempt automatically.
+
+This is a local operator audit trail, not authenticated reviewer identity (authentication remains a deployment prerequisite). Do not paste credentials into evidence. Original prompts, usage and attempt errors remain historical records; review notes do not replace them.
+
 ## REST API
 
 All application endpoints use `/api/v1`:
@@ -141,6 +157,9 @@ All application endpoints use `/api/v1`:
 | GET | `/jobs/{id}` | Job details |
 | POST | `/jobs/{id}/pause`, `/resume`, `/cancel` | Control dispatch |
 | GET | `/images`, `/images/{taskId}` | Image provenance / file |
+| GET | `/tasks/{id}` | Task details, attempts and manual reviews |
+| POST | `/tasks/{id}/reviews` | Record `{attemptId,resolution,evidence,confirmed:true}` without sending a request |
+| POST | `/tasks/{id}/retry` | Authorize `{attemptId,confirmed:true}` after a qualifying review; job stays paused |
 | GET | `/usage` | Image attempt history and raw measured usage |
 | GET / PUT | `/settings` | Read effective configuration / persist `maxConcurrency` and `estimatedCostPerImageUsd` |
 | GET | `/events` | SSE `jobs` snapshot each second; reconnect gets current state |

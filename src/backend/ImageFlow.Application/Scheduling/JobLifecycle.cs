@@ -16,7 +16,7 @@ public static class JobLifecycle
         {
             Stop(job, job.Tasks.Any(t => t.Status == "Unknown") ? "UnknownOutcome" : "ProviderFailure", true); return;
         }
-        if (job.Tasks.Any(t => t.Status is "Running" or "Pending" or "RetryWaiting")) return;
+        if (job.Tasks.Any(t => t.Status is "Running" or "Pending" or "RetryWaiting" or "Paused")) return;
         if (job.Mode == "Continuous")
         {
             if (job.Tasks.Count >= job.MaxImages) Stop(job, "QuantityLimit");

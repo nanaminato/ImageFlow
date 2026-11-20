@@ -17,6 +17,7 @@ builder.Services.AddSingleton<QueueGate>();
 builder.Services.AddScoped<IGenerationRepository, GenerationRepository>();
 builder.Services.AddScoped<PromptPlanService>();
 builder.Services.AddScoped<JobService>();
+builder.Services.AddScoped<TaskReviewService>();
 builder.Services.AddScoped<IRuntimeSettingsRepository, RuntimeSettingsRepository>();
 builder.Services.AddScoped<RuntimeSettingsService>();
 builder.Services.AddDbContext<QueueDb>((s, x) => x.UseSqlite($"Data Source={Path.Combine(s.GetRequiredService<EngineOptions>().DataDirectory, "imageflow.db")}"));
@@ -53,6 +54,7 @@ api.MapSettingsEndpoints();
 
 api.MapPlanEndpoints();
 api.MapJobEndpoints();
+api.MapTaskEndpoints();
 api.MapMediaEndpoints();
 api.MapEventEndpoints();
 if (hasWebRoot) app.MapFallbackToFile("index.html");

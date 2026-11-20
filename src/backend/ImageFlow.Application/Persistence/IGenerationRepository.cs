@@ -2,6 +2,8 @@ namespace ImageFlow;
 // Scoped unit of work. SaveChanges atomically commits the staged entity graph.
 public interface IGenerationRepository
 {
+    Task<GenerationTask?> GetTask(Guid id, CancellationToken ct);
+    void AddReview(TaskReview review);
     Task<Plan?> GetPlan(Guid id, CancellationToken ct);
     Task<Prompt?> GetPrompt(Guid id, CancellationToken ct);
     Task<Job?> GetJob(Guid id, CancellationToken ct);

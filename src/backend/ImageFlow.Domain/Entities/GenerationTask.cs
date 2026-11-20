@@ -10,5 +10,6 @@ public class GenerationTask
     public string? Error { get; set; }
     public DateTime? NextAttemptAt { get; set; }
     public string? ImagePath { get; set; }
+    public List<TaskReview> Reviews { get; set; } = [];
     public List<Attempt> Attempts { get; set; } = [];
 }

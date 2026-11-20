@@ -1,16 +1,52 @@
 @import '@angular/material/prebuilt-themes/azure-blue.css';
 @import './app/shared/styles/workspace.css';
+
+html {
+  --if-font: Inter, 'Segoe UI', Arial, sans-serif;
+  --mat-sys-body-large-font: var(--if-font);
+  --mat-sys-body-medium-font: var(--if-font);
+  --mat-sys-body-small-font: var(--if-font);
+  --mat-sys-display-large-font: var(--if-font);
+  --mat-sys-display-medium-font: var(--if-font);
+  --mat-sys-display-small-font: var(--if-font);
+  --mat-sys-headline-large-font: var(--if-font);
+  --mat-sys-headline-medium-font: var(--if-font);
+  --mat-sys-headline-small-font: var(--if-font);
+  --mat-sys-label-large-font: var(--if-font);
+  --mat-sys-label-medium-font: var(--if-font);
+  --mat-sys-label-small-font: var(--if-font);
+  --mat-sys-title-large-font: var(--if-font);
+  --mat-sys-title-medium-font: var(--if-font);
+  --mat-sys-title-small-font: var(--if-font);
+  --mat-sys-primary: #0f6b58;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: #d8efe7;
+  --mat-sys-on-primary-container: #063b30;
+  --mat-sys-primary-fixed: #d8efe7;
+  --mat-sys-primary-fixed-dim: #a9dccd;
+  --mat-sys-on-primary-fixed: #063b30;
+  --mat-sys-on-primary-fixed-variant: #0b5546;
+  --mat-sys-secondary: #50625c;
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-secondary-container: #e2ece8;
+  --mat-sys-on-secondary-container: #14251f;
+  --mat-sys-surface: #ffffff;
+  --mat-sys-surface-container: #f1f5f4;
+  --mat-sys-surface-container-low: #f7faf9;
+  --mat-sys-surface-container-high: #eaf0ee;
+  --mat-sys-surface-container-highest: #e2eae7;
+  --mat-sys-on-surface: #172420;
+  --mat-sys-on-surface-variant: #5c6b66;
+  --mat-sys-outline: #8a9a94;
+  --mat-sys-outline-variant: #d7e1dd;
+  color-scheme: light;
+}
+
 html,
 body {
-  margin: 0;
   min-height: 100%;
-  font-family:
-    Inter,
-    Segoe UI,
-    Arial,
-    sans-serif;
-  background: #f3f6f8;
 }
+
 * {
   box-sizing: border-box;
 }

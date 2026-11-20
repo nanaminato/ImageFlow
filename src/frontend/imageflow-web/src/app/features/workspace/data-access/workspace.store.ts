@@ -11,6 +11,8 @@ import {
 import { Subscription } from 'rxjs';
 import { GenerationApi } from '../../../core/data-access/generation-api.service';
 import {
+  ReviewInput,
+  RetryInput,
   EngineSettings,
   SettingsInput,
   JobOptions,
@@ -153,6 +155,18 @@ export const WorkspaceStore = signalStore(
           if (store.queuedPlanIds().has(plan.id)) return;
           for (const prompt of plan.prompts) await api.savePrompt(prompt);
           await api.enqueue(plan.id, options);
+          await refresh();
+        });
+      },
+      reviewTask(id: string, input: ReviewInput) {
+        return perform(async () => {
+          await api.reviewTask(id, input);
+          await refresh();
+        });
+      },
+      retryTask(id: string, input: RetryInput) {
+        return perform(async () => {
+          await api.retryTask(id, input);
           await refresh();
         });
       },

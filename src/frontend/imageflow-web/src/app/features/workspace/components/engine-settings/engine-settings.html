@@ -1,40 +1,46 @@
-<section class="panel">
-  <h2>Engine settings</h2>
-  <form #form="ngForm" (ngSubmit)="submit()">
-    <div class="settings-fields">
-      <mat-form-field appearance="outline"
-        ><mat-label>Concurrent image requests</mat-label
-        ><input
-          matInput
-          name="concurrency"
-          type="number"
-          [(ngModel)]="concurrency"
-          min="1"
-          max="8"
-          step="1"
-          required
-      /></mat-form-field>
-      <mat-form-field appearance="outline"
-        ><mat-label>Estimated USD per image request</mat-label
-        ><input
-          matInput
-          name="estimate"
-          type="number"
-          [(ngModel)]="estimate"
-          min="0"
-          max="1000"
-          step="0.000001"
-          required
-      /></mat-form-field>
-      <button mat-flat-button [disabled]="busy() || !settings() || form.invalid">
-        Save settings
-      </button>
-    </div>
-  </form>
-  <p class="hint">
-    Saved in SQLite. Concurrency changes apply immediately; existing requests finish when lowering
-    the limit. The estimate applies to new jobs only. Set a positive conservative estimate before
-    continuous generation; it is not a provider price or actual billed cost. Limits cover image
-    requests only, excluding the initial planning call.
-  </p>
-</section>
+<form #form="ngForm" class="engine-settings-form" (ngSubmit)="submit()">
+  <div class="settings-fields">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Concurrent image requests</mat-label>
+      <input
+        matInput
+        name="concurrency"
+        type="number"
+        [(ngModel)]="concurrency"
+        min="1"
+        max="8"
+        step="1"
+        required
+      />
+      <mat-hint>1–8 outstanding provider requests.</mat-hint>
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Estimated USD per image request</mat-label>
+      <input
+        matInput
+        name="estimate"
+        type="number"
+        [(ngModel)]="estimate"
+        min="0"
+        max="1000"
+        step="0.000001"
+        required
+      />
+      <mat-hint>Applied to new jobs only.</mat-hint>
+    </mat-form-field>
+  </div>
+  <div class="settings-note">
+    <strong>Estimate, not a bill</strong>
+    <p>
+      Concurrency changes apply immediately; lowering the limit lets in-flight requests finish. The
+      estimate applies to new jobs only. Set a positive, conservative value before continuous
+      generation — it is not a provider price or an actual billed cost. Limits cover image requests
+      only, excluding the initial planning call.
+    </p>
+  </div>
+  <div class="settings-actions">
+    <button mat-flat-button [disabled]="busy() || !settings() || form.invalid">
+      Save settings
+    </button>
+  </div>
+</form>

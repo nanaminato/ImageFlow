@@ -1,0 +1,96 @@
+<div class="task-detail">
+  <h3>Task details</h3>
+  <code>{{ task().id }}</code>
+  <p>{{ task().promptText }}</p>
+  <p>Status: {{ task().status }}</p>
+  @if (task().error) {
+    <p class="error">{{ task().error }}</p>
+  }
+  @if (task().nextAttemptAt) {
+    <p>Next retry: {{ task().nextAttemptAt | date: 'medium' }}</p>
+  }
+  <h4>Request & retry history</h4>
+  @for (attempt of attempts(); track attempt.id; let i = $index) {
+    <article class="attempt">
+      <strong>Attempt {{ i + 1 }} · {{ attempt.outcome }}</strong>
+      <p>
+        <code>{{ attempt.id }}</code>
+      </p>
+      <p>
+        {{ attempt.startedAt | date: 'medium' }} →
+        {{ attempt.finishedAt ? (attempt.finishedAt | date: 'medium') : 'In flight' }}
+      </p>
+      <p>
+        {{ attempt.provider }} / {{ attempt.model }} · Request ID:
+        {{ attempt.requestId || 'Unavailable' }}
+      </p>
+      <p>
+        Estimate retained/reserved: ${{ attempt.estimatedCostUsd | number: '1.2-6' }} ·
+        {{ attempt.costDisposition }}
+      </p>
+      @if (attempt.error) {
+        <p class="error">{{ attempt.error }}</p>
+      }
+      @if (attempt.usageJson) {
+        <pre>{{ attempt.usageJson }}</pre>
+      }
+      @for (record of task().reviews; track record.id) {
+        @if (record.attemptId === attempt.id) {
+          <div class="review-record">
+            <strong>Manual review: {{ record.resolution }}</strong>
+            <p>{{ record.evidence }}</p>
+            <p>{{ record.reviewedAt | date: 'medium' }}</p>
+            @if (record.retryAuthorizedAt) {
+              <p>Retry authorized: {{ record.retryAuthorizedAt | date: 'medium' }}</p>
+            }
+          </div>
+        }
+      }
+    </article>
+  } @empty {
+    <p>No provider request has been sent.</p>
+  }
+  @if (task().status === 'Unknown') {
+    <h4>Reconcile unknown outcome</h4>
+    <p class="hint">
+      Check the provider request ID, output history and billing records first. This app cannot
+      verify the provider's records. Do not paste API keys. Reviewing never sends a request. Wait
+      until all requests in this job finish.
+    </p>
+    <label
+      >Review conclusion<select aria-label="Review conclusion" [(ngModel)]="resolution">
+        <option value="Generated">Confirmed generated — retain estimate</option>
+        <option value="NotGeneratedNotCharged">Confirmed not generated AND not charged</option>
+        <option value="Abandon">Abandon — retain uncertain estimate</option>
+      </select></label
+    >
+    <label
+      >Provider evidence<textarea
+        aria-label="Provider evidence"
+        [(ngModel)]="evidence"
+        maxlength="2000"
+        rows="3"
+      ></textarea>
+    </label>
+    <label
+      ><input type="checkbox" [(ngModel)]="confirmed" /> I checked provider records and confirm this
+      conclusion.</label
+    >
+    <button mat-button (click)="submit()" [disabled]="busy() || !confirmed || !evidence.trim()">
+      Record review without retry
+    </button>
+  }
+  @if (canRetry()) {
+    <p class="hint">
+      No output and no charge was manually confirmed. Authorizing retry queues this task but keeps
+      the job paused. Resume separately. Budget and attempt limits still apply.
+    </p>
+    <label
+      ><input type="checkbox" [(ngModel)]="retryConfirmed" /> I authorize a new request that may
+      incur a charge.</label
+    >
+    <button mat-button (click)="authorize()" [disabled]="busy() || !retryConfirmed">
+      Authorize reviewed retry
+    </button>
+  }
+</div>

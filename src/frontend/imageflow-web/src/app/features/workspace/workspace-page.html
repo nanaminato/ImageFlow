@@ -1,26 +1,51 @@
-<header>
-  <div class="brand">◈ ImageFlow</div>
-  <span class="connection">{{ store.connected() ? '● Live' : '○ Reconnecting' }}</span><span>{{
-    store.providerLabel()
-  }}</span>
+<header class="app-header">
+  <a class="brand" href="/" aria-label="ImageFlow workspace">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="3.5" y="3.5" width="11" height="11" rx="2.5" />
+        <path d="M9.5 20.5h8a3 3 0 0 0 3-3v-8" />
+        <circle cx="9" cy="9" r="2" fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+    <span class="brand-text">
+      <span class="brand-name">ImageFlow</span>
+      <span class="brand-tagline">Continuous image engine</span>
+    </span>
+  </a>
+  <div class="header-tools">
+    <span class="live-pill" [class.is-offline]="!store.connected()">
+      <span class="live-dot" aria-hidden="true"></span>
+      {{ store.connected() ? 'Live' : 'Reconnecting' }}
+    </span>
+    <span class="provider-pill">{{ store.providerLabel() }}</span>
+    <button
+      mat-stroked-button
+      type="button"
+      class="settings-button"
+      aria-label="Engine settings"
+      (click)="openSettings()"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path
+          d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.48-.41h-3.84a.5.5 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z"
+        />
+      </svg>
+      <span>Settings</span>
+    </button>
+  </div>
 </header>
-<main>
-  <div class="intro">
-    <span class="eyebrow">GENERATION WORKSPACE</span>
+<main class="app-main">
+  <section class="hero">
+    <span class="eyebrow">Generation workspace</span>
     <h1>From an idea to a collection.</h1>
     <p>Plan your prompts, review the details, and let the queue do the work.</p>
-  </div>
+  </section>
   @if (store.error()) {
     <div class="error" role="alert">{{ store.error() }}</div>
   }
   @if (store.busy()) {
-    <mat-progress-bar mode="indeterminate" />
+    <mat-progress-bar class="busy-bar" mode="indeterminate" />
   }
-  <app-engine-settings
-    [settings]="store.settings()"
-    [busy]="store.busy()"
-    (save)="store.updateSettings($event)"
-  />
   <app-prompt-planner [busy]="store.busy()" (create)="store.createPlan($event)" />
   <div class="workspace">
     <app-prompt-editor
@@ -38,6 +63,8 @@
       [jobs]="store.jobs()"
       [busy]="store.busy()"
       (control)="store.controlJob($event.job, $event.action)"
+      (review)="store.reviewTask($event.id, $event.input)"
+      (retry)="store.retryTask($event.id, $event.input)"
     />
   </div>
   <app-image-gallery [images]="store.images()" />

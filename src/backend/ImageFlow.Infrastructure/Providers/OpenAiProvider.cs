@@ -11,8 +11,10 @@ public class OpenAiProvider(HttpClient http, EngineOptions options) : IPromptPla
         using var req = new HttpRequestMessage(HttpMethod.Post, new Uri(options.GetBaseUri(), path));
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.GetApiKey());
         req.Content = JsonContent.Create(body);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(http.Timeout);
         HttpResponseMessage response;
-        try { response = await http.SendAsync(req, ct); } catch (Exception e) when (e is HttpRequestException or OperationCanceledException) { throw new ProviderFailure("Connection interrupted; provider outcome is unknown.", unknown: true); }
+        try { response = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, deadline.Token); } catch (Exception e) when (e is HttpRequestException or OperationCanceledException) { throw new ProviderFailure("Connection interrupted; provider outcome is unknown.", unknown: true); }
         using (response)
         {
             var id = response.Headers.TryGetValues("x-request-id", out var ids) ? ids.FirstOrDefault() : null;
@@ -21,10 +23,10 @@ public class OpenAiProvider(HttpClient http, EngineOptions options) : IPromptPla
                 // Only an explicit rate-limit rejection is automatically safe to retry. 5xx can have ambiguous side effects.
                 var retry = response.Headers.RetryAfter;
                 var delay = retry?.Delta ?? (retry?.Date is { } date ? date - DateTimeOffset.UtcNow : null);
-                throw new ProviderFailure($"OpenAI HTTP {(int)response.StatusCode}; request {id ?? "unavailable"}.", response.StatusCode == HttpStatusCode.TooManyRequests, delay, (int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.RequestTimeout);
+                throw new ProviderFailure($"OpenAI HTTP {(int)response.StatusCode}; request {id ?? "unavailable"}.", response.StatusCode == HttpStatusCode.TooManyRequests, delay, (int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.RequestTimeout, requestId: id);
             }
-            try { return (JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct)), id); }
-            catch (Exception e) when (e is JsonException or HttpRequestException or OperationCanceledException) { throw new ProviderFailure("Response interrupted or invalid; outcome unknown.", unknown: true); }
+            try { return (JsonDocument.Parse(await response.Content.ReadAsStringAsync(deadline.Token)), id); }
+            catch (Exception e) when (e is JsonException or HttpRequestException or OperationCanceledException) { throw new ProviderFailure("Response interrupted or invalid; outcome unknown.", unknown: true, requestId: id); }
         }
     }
     public async Task<string[]> PlanAsync(string theme, int count, CancellationToken ct)
@@ -45,7 +47,7 @@ public class OpenAiProvider(HttpClient http, EngineOptions options) : IPromptPla
         using (doc)
         {
             try { return new(Convert.FromBase64String(doc.RootElement.GetProperty("data")[0].GetProperty("b64_json").GetString()!), "png", "image/png", doc.RootElement.TryGetProperty("usage", out var u) ? u.GetRawText() : null, id); }
-            catch (Exception e) when (e is KeyNotFoundException or FormatException or InvalidOperationException) { throw new ProviderFailure("Image response could not be decoded; outcome unknown.", unknown: true); }
+            catch (Exception e) when (e is KeyNotFoundException or FormatException or InvalidOperationException) { throw new ProviderFailure("Image response could not be decoded; outcome unknown.", unknown: true, requestId: id); }
         }
     }
 }

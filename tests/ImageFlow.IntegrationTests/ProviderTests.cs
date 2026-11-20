@@ -76,4 +76,14 @@ public class ProviderTests
         var failure = await Assert.ThrowsAsync<ProviderFailure>(() => new OpenAiProvider(http, new EngineOptions()).GenerateAsync("prompt", CancellationToken.None));
         Assert.True(failure.Unknown); Assert.False(failure.Retryable);
     }
+    [Fact]
+    public async Task MalformedResponseRetainsRequestIdForManualReview()
+    {
+        var http=new HttpClient(new Handler(_=>{
+            var response=Json("invalid JSON");response.Headers.Add("x-request-id","req-malformed");return Task.FromResult(response);
+        }));
+        var failure=await Assert.ThrowsAsync<ProviderFailure>(()=>new OpenAiProvider(http,new EngineOptions()).GenerateAsync("test",CancellationToken.None));
+        Assert.True(failure.Unknown);Assert.Equal("req-malformed",failure.RequestId);
+    }
+
 }

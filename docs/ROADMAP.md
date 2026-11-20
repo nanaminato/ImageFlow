@@ -1,6 +1,6 @@
 # ImageFlow implementation roadmap
 
-## Implementation status — 2026-11-19
+## Implementation status — 2026-11-20
 
 Architecture follow-up: backend split into Domain/Application/Infrastructure/Worker/API assemblies; Angular split into a lazy workspace feature, NgRx Signal Store, HTTP/SSE data access and four presentational components. An explicitly configured compatible HTTPS provider is supported alongside the official OpenAI provider. Live testing remains opt-in.
 
@@ -10,7 +10,9 @@ The first vertical slice also implements selected M2–M4 work: Mock/OpenAI prov
 
 Live concurrency/settings and bounded continuous generation are implemented. SQLite persists concurrency, the user-supplied per-image USD estimate, per-job quantity/budget snapshots, reservations and stop reasons. Lowering concurrency drains requests. Continuous jobs repeat reviewed stored prompts, stop at quantity/estimated-budget caps, and retain uncertain exposure across restart. Existing data migrates as finite/unpriced history. Tests cover live changes, caps, concurrent reservations, retry refunds, pause/cancel, recovery and upgrade.
 
-Remaining work: priorities and intervals, provider-priced estimation/actual billing reconciliation, planning usage history, richer batching/deduplication, manual uncertain-outcome reconciliation, authentication and deployment hardening. Finite plans allow 1–20 prompts; continuous jobs require a 1–1000 image cap and a positive estimate budget. Measured image usage is retained separately; estimated exposure is not actual billed cost.
+Remaining work: priorities and intervals, provider-priced estimation/actual billing reconciliation, planning usage history, richer batching/deduplication, authenticated review attribution/remote output import, authentication and deployment hardening. Finite plans allow 1–20 prompts; continuous jobs require a 1–1000 image cap and a positive estimate budget. Measured image usage is retained separately; estimated exposure is not actual billed cost.
+
+Manual Unknown review is implemented: task detail/history API and UI, evidence-backed one-time conclusions, separate retry authorization, explicit job resume, retained historical attempts and estimate-aware restart-safe recovery. No blind/force retry is provided.
 
 ## M1 — Executable foundation
 - Create a .NET 10 solution and compilable ASP.NET Core API.

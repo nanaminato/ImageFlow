@@ -23,6 +23,8 @@ describe('WorkspaceStore', () => {
     enqueue: ReturnType<typeof vi.fn>;
     control: ReturnType<typeof vi.fn>;
     events: ReturnType<typeof vi.fn>;
+    reviewTask: ReturnType<typeof vi.fn>;
+    retryTask: ReturnType<typeof vi.fn>;
   };
   beforeEach(() => {
     events = new Subject<boolean>();
@@ -41,6 +43,8 @@ describe('WorkspaceStore', () => {
       enqueue: vi.fn().mockResolvedValue({}),
       control: vi.fn(),
       events: vi.fn().mockReturnValue(events),
+      reviewTask: vi.fn().mockResolvedValue({}),
+      retryTask: vi.fn().mockResolvedValue({}),
     };
     TestBed.configureTestingModule({
       providers: [WorkspaceStore, { provide: GenerationApi, useValue: api }],
@@ -164,5 +168,44 @@ describe('WorkspaceStore', () => {
     await vi.waitFor(() => expect(api.settings).toHaveBeenCalledTimes(2));
     expect(store.settings()?.revision).toBe(2);
     expect(store.settings()?.maxConcurrency).toBe(4);
+  });
+  it('records a review without authorizing retry or resuming a job', async () => {
+    const store = await initialized();
+    const input = {
+      attemptId: 'attempt-1',
+      resolution: 'NotGeneratedNotCharged',
+      evidence: 'Provider records checked',
+      confirmed: true,
+    };
+    await store.reviewTask('task-1', input);
+    expect(api.reviewTask).toHaveBeenCalledWith('task-1', input);
+    expect(api.retryTask).not.toHaveBeenCalled();
+    expect(api.control).not.toHaveBeenCalled();
+    expect(api.enqueue).not.toHaveBeenCalled();
+  });
+  it('authorizes retry only through a separate command and never auto-resumes', async () => {
+    const store = await initialized();
+    await store.retryTask('task-1', { attemptId: 'attempt-1', confirmed: true });
+    expect(api.retryTask).toHaveBeenCalledWith('task-1', {
+      attemptId: 'attempt-1',
+      confirmed: true,
+    });
+    expect(api.control).not.toHaveBeenCalled();
+    expect(api.enqueue).not.toHaveBeenCalled();
+  });
+  it('displays stale-review rejection without attempting another request', async () => {
+    const store = await initialized();
+    api.reviewTask.mockRejectedValue(
+      new HttpErrorResponse({ status: 409, error: { error: 'Stale review' } }),
+    );
+    await store.reviewTask('task-1', {
+      attemptId: 'old',
+      resolution: 'Generated',
+      evidence: 'checked',
+      confirmed: true,
+    });
+    expect(store.error()).toBe('Stale review');
+    expect(store.busy()).toBe(false);
+    expect(api.retryTask).not.toHaveBeenCalled();
   });
 });

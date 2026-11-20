@@ -32,10 +32,11 @@ app/
       job-queue/
       image-gallery/
       engine-settings/
+      task-detail/
   shared/styles/workspace.css
 ```
 
-NgRx Signal Store 22.0.1 owns plans, jobs, settings, selected plan, busy/error state and connection status. Computed selectors derive gallery items and queued plans. Components use OnPush and read-only signal inputs/output events; edits update immutable drafts through Store methods. The data-access service owns HTTP and EventSource, and Store lifecycle hooks close SSE on scope destruction. The workspace is lazily loaded. Framework guidance: [NgRx Signal Store](https://ngrx.io/guide/signals/signal-store).
+NgRx Signal Store 22.0.1 owns plans, jobs, settings, selected plan, busy/error state and connection status. Computed selectors derive gallery items and queued plans. Components use OnPush and read-only signal inputs/output events; edits update immutable drafts through Store methods. The data-access service owns HTTP and EventSource, and Store lifecycle hooks close SSE on scope destruction. The workspace is lazily loaded. Runtime engine settings open from the header in a Material dialog, keeping configuration out of the main workspace. Framework guidance: [NgRx Signal Store](https://ngrx.io/guide/signals/signal-store).
 
 ## Data flow
 
@@ -46,7 +47,7 @@ NgRx Signal Store 22.0.1 owns plans, jobs, settings, selected plan, busy/error s
 5. On success, the worker writes an image via a temporary file and move, then records the path, Completed state, provider request ID and measured raw usage JSON in SQLite.
 6. Angular receives SSE current-state snapshots each second and reloads job details. Images are served by task ID; user-supplied paths are not accepted.
 
-EF Core SQLite migrations apply at startup. Tables: Plans, Prompts, Jobs, Tasks, Attempts and RuntimeSettings. SQLite is the queue authority; there is no in-memory queue to lose across restarts. Images live on the local filesystem. All database writes are awaited.
+EF Core SQLite migrations apply at startup. Tables: Plans, Prompts, Jobs, Tasks, Attempts, RuntimeSettings and TaskReviews. SQLite is the queue authority; there is no in-memory queue to lose across restarts. Images live on the local filesystem. All database writes are awaited.
 
 ## States and recovery
 
@@ -79,3 +80,15 @@ Remaining increments: planning usage/durable planning attempts, provider-priced 
 ## Verification
 
 Backend integration tests use isolated physical SQLite databases and mock providers. NgRx Store unit tests cover immutable drafts, persistence ordering/idempotency, API error recovery and SSE teardown. They cover planning/editing/generation/download, idempotency, state controls, restart behavior, concurrency, Retry-After, Unknown safety and SSE. HTTP-handler tests verify the OpenAI adapters without network calls. Playwright exercises the Angular-to-API workflow using Mock mode and checks persistence after refresh, settings changes, continuous budget stops, error display and mobile overflow. The separately invoked `scripts/test-provider.py --allow-paid` runs one real persisted plan/image flow and never retries; it is not part of automated tests. See README for reproducible commands.
+
+## Manual reconciliation boundary
+
+`TaskReviewService` in Application orchestrates review and retry authorization through `IGenerationRepository`. Infrastructure persists TaskReview records with a unique AttemptId and foreign keys to task/attempt. API endpoints translate application results; the worker does not infer a human decision. Angular TaskDetail is a presentational component; explicit review/retry commands pass through the existing WorkspaceStore and typed data-access service.
+
+A review requires the latest Unknown attempt, evidence, explicit confirmation and no Running siblings. Generated retains exposure; Abandon retains uncertain exposure; NotGeneratedNotCharged releases only the matching reservation and moves the task to Paused. The parent job stays Paused (or Cancelled). Original attempt Outcome remains Unknown; CostDisposition and a separate audit record explain the decision.
+
+Retry authorization is a second gated transaction bound to that reviewed attempt. It rejects cancelled jobs, unresolved sibling Unknowns, exhausted attempt caps, insufficient budgets, changed provider/model/size and repeated authorization. It moves the task to Pending but never resumes the job or sends HTTP. Resume rejects unresolved Unknown/Paused review tasks. The normal worker later creates a fresh attempt and reserves budget atomically; counts/exposure are not reset. Historical reviews survive subsequent attempts and restarts.
+
+Task GET and expanded queue details expose start/end times, request IDs, usage, retry scheduling, estimated dispositions and review/authorization records. ProviderFailure carries request IDs into uncertain history when headers were received. Remote output import and authenticated reviewer attribution are outside this local-first increment.
+
+Tests include actual SQLite/API review, duplicate/stale requests, no-send decisions, retained/released estimates, restart/resume, budget/attempt/configuration guards and in-flight siblings. Store tests check command separation; the browser review scenario uses intercepted API responses to exercise confirmation controls and history rendering, alongside the existing real Mock-backed end-to-end scenarios.

@@ -74,7 +74,7 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
                     job.Tasks.Add(task);
                 }
                 if (task == null) continue;
-                task.Status = "Running"; task.Error = null;
+                task.Status = "Running"; task.Error = null; task.NextAttemptAt = null;
                 job.EstimatedExposureUsd += job.EstimatedCostPerImageUsd;
                 db.Attempts.Add(new Attempt { GenerationTaskId = task.Id, Provider = options.Provider, Model = options.Provider == "Mock" ? "mock-svg" : options.ImageModel, EstimatedCostUsd = job.EstimatedCostPerImageUsd });
                 // Entity graph, reservation and Running attempt commit together, before the request.
@@ -116,6 +116,8 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
             {
                 // A local persistence failure following success must also prevent automatic resend.
                 var failure = error as ProviderFailure;
+                attempt.RequestId = failure?.RequestId ?? result?.RequestId;
+                attempt.UsageJson = result?.UsageJson;
                 task.Error = failure?.Message ?? "Request or output persistence interrupted; outcome unknown.";
                 attempt.Error = task.Error;
                 if (failure?.Retryable == true && task.Attempts.Count < options.MaxAttempts)
