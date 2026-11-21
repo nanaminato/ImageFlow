@@ -1,6 +1,5 @@
 <section class="panel">
   <div class="panel-head">
-    <span class="step">03</span>
     <div class="panel-titles">
       <h2>{{ 'Generation queue' | t }}</h2>
       <p>{{ 'Track progress, inspect attempts, and control dispatch.' | t }}</p>
@@ -8,6 +7,9 @@
   </div>
   @for (job of jobs(); track job.id) {
     <article class="job">
+      @if (planNames()[job.planId]) {
+        <h3 class="job-name">{{ planNames()[job.planId] }}</h3>
+      }
       <div class="job-top">
         <div class="job-identity">
           <code class="job-id">{{ job.id.slice(0, 8) }}</code>
@@ -36,6 +38,14 @@
         <p class="stop-reason">{{ 'Stopped:' | t }} {{ job.stopReason | t }}</p>
       }
       <div class="actions">
+        <a mat-button routerLink="/prompts" [queryParams]="{ plan: job.planId }">{{
+          'View prompt plan' | t
+        }}</a>
+        @if (hasImages(job)) {
+          <a mat-button routerLink="/gallery" [queryParams]="{ job: job.id }">{{
+            'View images' | t
+          }}</a>
+        }
         @if (job.status === 'Active') {
           <button mat-button (click)="control.emit({ job, action: 'pause' })" [disabled]="busy()">
             {{ 'Pause' | t }}

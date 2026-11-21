@@ -6,24 +6,21 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { EngineSettingsDialog } from './components/engine-settings/engine-settings-dialog';
 import { WorkspaceStore } from './data-access/workspace.store';
-import { PromptPlanner } from './components/prompt-planner/prompt-planner';
-import { PromptEditor } from './components/prompt-editor/prompt-editor';
-import { JobQueue } from './components/job-queue/job-queue';
-import { ImageGallery } from './components/image-gallery/image-gallery';
+import { WorkspaceViewState } from './data-access/workspace-view-state';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-workspace-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [WorkspaceStore],
+  providers: [WorkspaceStore, WorkspaceViewState],
   imports: [
     TranslatePipe,
     MatButtonModule,
     MatDialogModule,
     MatProgressBarModule,
-    PromptPlanner,
-    PromptEditor,
-    JobQueue,
-    ImageGallery,
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
   ],
   templateUrl: './workspace-page.html',
 })

@@ -9,8 +9,14 @@ test('plan, edit, queue and view generated collection', async ({ page }) => {
   await page.getByLabel('Prompt 1', { exact: true }).fill('A seaside lighthouse in morning light');
   await page.getByRole('button', { name: 'Save & queue collection' }).click();
   await expect(page.getByText('2 / 2 completed', { exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page).toHaveURL(/\/queue\?plan=/);
+  await expect(page.locator('app-prompt-editor')).toHaveCount(0);
+  await page.getByRole('link', { name: 'View images', exact: true }).click();
+  await expect(page).toHaveURL(/\/gallery\?job=/);
   await expect(page.locator('.gallery img')).toHaveCount(2);
+  await page.getByRole('link', { name: 'Prompt management', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Already queued' })).toBeDisabled();
+  await page.getByRole('link', { name: 'Collection library', exact: true }).click();
   await page.reload();
   await expect(page.locator('.gallery img')).toHaveCount(2);
   await page.screenshot({ path: '../../../.cache/e2e-workspace.png', fullPage: true });
@@ -34,7 +40,10 @@ test('planning errors keep existing state and release the form', async ({ page }
   });
   await page.getByRole('button', { name: 'Plan prompts', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Provider temporarily unavailable');
+  await expect(page).toHaveURL(/\/create$/);
   await expect(page.getByRole('button', { name: 'Plan prompts', exact: true })).toBeEnabled();
+  await expect(page.locator('app-image-gallery')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Collection library', exact: true }).click();
   await expect(page.locator('.gallery img')).toHaveCount(2);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('body')).toHaveJSProperty('scrollWidth', 390);
@@ -157,7 +166,7 @@ test('manual review does not implicitly retry or resume (intercepted API)', asyn
   page.on('request', (r) => {
     if (r.method() === 'POST' && !r.url().includes('/api/v1/tasks/')) otherPosts++;
   });
-  await page.goto('/');
+  await page.goto('/queue');
   await page.getByText('Unknown · Uncertain image request', { exact: true }).click();
   await expect(page.getByText('req-review-test', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Record review without retry' })).toBeDisabled();

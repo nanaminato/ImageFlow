@@ -45,6 +45,17 @@ Open [the UI](http://localhost:4200), enter a theme, plan 1–20 prompts, edit t
 
 Default data is `src/backend/ImageFlow.Api/data/`: SQLite database and `images/` files. Keep both together when backing up (stop the API first). Configure an absolute `Engine__DataDirectory` to move it. Never commit data or credentials. Relative data paths resolve from the API content root.
 
+The workspace uses four independently addressable pages:
+
+| Page | Route | Management features |
+| --- | --- | --- |
+| Create collection | `/create` (default) | Theme/count draft and planning; successful planning opens the new plan |
+| Prompt management | `/prompts?plan=<id>` | Search saved plans, filter Draft/Queued, edit/save prompts, choose finite/continuous limits and queue |
+| Queue management | `/queue?plan=<id>` | Filter by plan/status or search job ID/theme/prompt; progress, pause/resume/cancel, manual review; links to prompts and results |
+| Collection library | `/gallery?job=<id>` | Browse/download images, search prompt/theme and filter by generation job |
+
+The shared navigation remains visible on each page. A parent workspace Store owns one initialization/SSE subscription and preserves unsaved prompt edits while navigating. The creation draft and per-plan generation settings also survive page switches within this open workspace. A full reload restores persisted server data; unsaved drafts and text/status filters are intentionally session-only. Plan/job URL filters can be bookmarked and survive reload. After successful enqueue, the UI opens that plan's queue. Failed operations stay on their page and show the error. Opening a management page never enqueues or retries work.
+
 The UI supports English and Simplified Chinese. On first visit, the browser's primary system language selects Chinese for `zh` variants and English otherwise. Use the header language selector to switch immediately; a manual choice is saved in this browser's local storage and takes precedence on later visits. Switching preserves unsaved form contents. If browser storage is blocked, switching still works for the current page. User prompts and raw provider/server errors retain their original language.
 
 ### Architecture and navigation

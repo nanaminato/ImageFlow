@@ -94,7 +94,7 @@ test.describe('interface language', () => {
         ],
       }),
     );
-    await page.goto('/');
+    await page.goto('/queue');
     await expect(page.getByRole('button', { name: '继续', exact: true })).toBeVisible();
     await page.locator('summary').click();
     await expect(page.getByRole('heading', { name: '核查未知结果' })).toBeVisible();

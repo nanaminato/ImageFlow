@@ -60,3 +60,7 @@ Manual Unknown review is implemented: task detail/history API and UI, evidence-b
 - Durable profile/endpoint/credential-reference/adapter/model/options/retry-limit snapshots drive requests. No credential values in SQLite. Defaults do not remap queued work.
 - Configuration-bound estimates require reconfirmation after generation settings change. Historical incomplete jobs remain readable but cannot execute.
 - Intercepted official plan/image tests validate PNG decode/write/download, request ID/usage, Unknown safety, restart/default isolation, profile mismatch and database upgrade. Account/model access remains unverified until a separately authorized paid test.
+
+## Workspace management pages — implemented 2026-11-21
+
+Creation, prompt management, queue management and the image collection now have separate lazy routes with shared navigation and a single Store/SSE lifecycle. Saved plans support text/status filtering; jobs support text/status/plan filtering and existing controls/review; images support prompt/theme/job filtering and download. Plan/job deep links restore selection on refresh. In-session drafts survive navigation; per-plan generation options remain isolated. No new API operation, automatic retry or paid capability probe is introduced.

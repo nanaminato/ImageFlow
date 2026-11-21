@@ -1,5 +1,5 @@
 <header class="app-header">
-  <a class="brand" href="/" [attr.aria-label]="'ImageFlow workspace' | t">
+  <a class="brand" routerLink="/create" [attr.aria-label]="'ImageFlow workspace' | t">
     <span class="brand-mark" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <rect x="3.5" y="3.5" width="11" height="11" rx="2.5" />
@@ -50,37 +50,41 @@
   </div>
 </header>
 <main class="app-main">
-  <section class="hero">
-    <span class="eyebrow">{{ 'Generation workspace' | t }}</span>
-    <h1>{{ 'From an idea to a collection.' | t }}</h1>
-    <p>{{ 'Plan your prompts, review the details, and let the queue do the work.' | t }}</p>
-  </section>
+  <nav class="workspace-nav" [attr.aria-label]="'Workspace navigation' | t">
+    <a
+      routerLink="/create"
+      routerLinkActive="is-current"
+      ariaCurrentWhenActive="page"
+      [attr.aria-label]="'Create collection' | t"
+      >{{ 'Create collection' | t }}</a
+    >
+    <a
+      routerLink="/prompts"
+      routerLinkActive="is-current"
+      ariaCurrentWhenActive="page"
+      [attr.aria-label]="'Prompt management' | t"
+      >{{ 'Prompt management' | t }} <span>{{ store.plans().length }}</span></a
+    >
+    <a
+      routerLink="/queue"
+      routerLinkActive="is-current"
+      ariaCurrentWhenActive="page"
+      [attr.aria-label]="'Queue management' | t"
+      >{{ 'Queue management' | t }} <span>{{ store.jobs().length }}</span></a
+    >
+    <a
+      routerLink="/gallery"
+      routerLinkActive="is-current"
+      ariaCurrentWhenActive="page"
+      [attr.aria-label]="'Collection library' | t"
+      >{{ 'Collection library' | t }} <span>{{ store.images().length }}</span></a
+    >
+  </nav>
   @if (store.error()) {
     <div class="error" role="alert">{{ store.error() }}</div>
   }
   @if (store.busy()) {
     <mat-progress-bar class="busy-bar" mode="indeterminate" />
   }
-  <app-prompt-planner [busy]="store.busy()" (create)="store.createPlan($event)" />
-  <div class="workspace">
-    <app-prompt-editor
-      [plans]="store.plans()"
-      [estimatedCostPerImage]="store.settings()?.estimatedCostPerImageUsd ?? 0"
-      [selected]="store.selectedPlan()"
-      [queuedIds]="store.queuedPlanIds()"
-      [busy]="store.busy()"
-      (selectPlan)="store.selectPlan($event)"
-      (edit)="store.editPrompt($event.id, $event.text)"
-      (save)="store.savePrompt($event)"
-      (enqueue)="store.enqueue($event.plan, $event.options)"
-    />
-    <app-job-queue
-      [jobs]="store.jobs()"
-      [busy]="store.busy()"
-      (control)="store.controlJob($event.job, $event.action)"
-      (review)="store.reviewTask($event.id, $event.input)"
-      (retry)="store.retryTask($event.id, $event.input)"
-    />
-  </div>
-  <app-image-gallery [images]="store.images()" />
+  <router-outlet />
 </main>

@@ -1,26 +1,10 @@
 <section class="panel">
   <div class="panel-head">
-    <span class="step">02</span>
     <div class="panel-titles">
       <h2>{{ 'Review prompts' | t }}</h2>
       <p>{{ 'Refine each prompt before queuing. Queued collections are locked.' | t }}</p>
     </div>
   </div>
-  @if (plans().length) {
-    <div class="plan-list" [attr.aria-label]="'Saved prompt plans' | t">
-      @for (plan of plans(); track plan.id) {
-        <button
-          mat-button
-          type="button"
-          class="plan-chip"
-          [class.is-active]="plan.id === selected()?.id"
-          (click)="selectPlan.emit(plan.id)"
-        >
-          {{ plan.theme }}
-        </button>
-      }
-    </div>
-  }
   @if (selected(); as plan) {
     <div class="editor-heading">
       <h3>{{ plan.theme }}</h3>
@@ -59,7 +43,7 @@
             <option value="Continuous">{{ 'Continuous — cycle reviewed prompts' | t }}</option>
           </select>
         </label>
-        @if (mode === 'Continuous') {
+        @if (mode() === 'Continuous') {
           <div class="limit-fields">
             <mat-form-field appearance="outline"
               ><mat-label>{{ 'Maximum continuous images' | t }}</mat-label

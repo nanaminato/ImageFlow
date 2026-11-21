@@ -69,12 +69,14 @@ export const WorkspaceStore = signalStore(
       if (!destroyed) patchState(store, { error: message });
     };
     const perform = async (operation: () => Promise<void>) => {
-      if (store.busy() || destroyed) return;
+      if (store.busy() || destroyed) return false;
       patchState(store, { busy: true, error: '' });
       try {
         await operation();
+        return true;
       } catch (error) {
         report(error);
+        return false;
       } finally {
         if (!destroyed) patchState(store, { busy: false });
       }

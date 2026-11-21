@@ -24,7 +24,8 @@ app/
     models/generation.models.ts   # Typed API contracts and status unions
     data-access/generation-api.service.ts # Angular HttpClient + SSE observable
   features/workspace/
-    workspace-page.ts             # Store/component wiring
+    workspace-page.ts             # Shared header/navigation, Store provider and child outlet
+    pages/                        # Lazy create, prompts, queue and gallery pages
     data-access/workspace.store.ts # NgRx Signal Store, commands and derived state
     components/
       prompt-planner/
@@ -100,3 +101,15 @@ Tests include actual SQLite/API review, duplicate/stale requests, no-send decisi
 `RuntimeSettings.EstimateConfiguration` binds estimates to a non-secret generation-configuration fingerprint. Changing defaults requires reconfirmation for new jobs, while old jobs keep their options and estimates. Incomplete historical profiles cannot execute; see [upgrade procedure](model-upgrade.md).
 
 `PngOutput` checks PNG signature, chunk lengths/CRCs, header/data/end envelope before publication. It is not a general image decoder. Tests use a real PNG and decompress its scanline. Invalid output becomes Unknown with available request ID/usage retained; no automatic resend occurs. Full intercepted HTTP plan-to-PNG integration tests exercise real SQLite, request serialization, file writes and download without network calls.
+
+## Routed management workspace
+
+The parent `WorkspacePage` owns `WorkspaceStore`, `WorkspaceViewState`, the shared header/navigation/settings dialog and a child RouterOutlet. Child routes `/create`, `/prompts`, `/queue`, `/gallery` are independently lazy loaded. Navigating between them does not reinitialize Store or create a second EventSource. Store persists until the workspace shell is destroyed.
+
+`CreatePage` invokes planning and opens `/prompts?plan=<id>` on success. `PromptsPage` hydrates selection from that query parameter (including reload), renders a searchable Draft/Queued plan list and delegates edits/save/enqueue to Store. Success opens `/queue?plan=<id>`; unavailable plan IDs cannot edit an unrelated selection. `QueuePage` filters by plan, status and text while retaining existing task review and controls. Its links open the original plan or `/gallery?job=<id>`. `GalleryPage` filters completed local outputs by job or prompt/theme and delegates preview/download rendering. Filtering is client-side; server pagination remains future work.
+
+`WorkspaceViewState` retains the unsubmitted creation draft, per-plan mode/quantity/budget drafts and search/status filters during navigation. It stores no credentials and makes no API calls. Prompt text drafts live in Store. Reload restores persisted server data rather than unsaved in-memory drafts; URL plan/job selection remains durable. Generation options are kept per plan to prevent one draft's Continuous limits leaking into another.
+
+Store commands return a success flag, so wrappers navigate only after successful operations. DestroyRef guards prevent a finished request from redirecting a user who already left the originating page. Management navigation itself never authorizes a remote request. Shared error/busy/live state and language selection remain visible across pages.
+
+Browser scenarios cover independent page content, create→review→queue→gallery, search/status/job filters, queued prompt locking, unsaved draft retention across navigation, direct links/reload/back navigation, unchanged manual retry authorization, both languages and mobile overflow. Tests use a separate Mock API/database or fully intercepted fixtures.
