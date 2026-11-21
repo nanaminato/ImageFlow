@@ -26,7 +26,7 @@ body {
     radial-gradient(1100px 560px at 6% -12%, rgba(15, 107, 88, 0.1), transparent 60%),
     radial-gradient(900px 520px at 100% 0%, rgba(191, 219, 210, 0.32), transparent 55%),
     var(--if-bg);
-  font-family: Inter, 'Segoe UI', Arial, sans-serif;
+  font-family: Inter, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -907,4 +907,14 @@ a {
   .job {
     padding: 14px;
   }
+}
+.language-select {
+  font: inherit;
+  color: inherit;
+  background: var(--mat-sys-surface, #fff);
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-height: 40px;
+  cursor: pointer;
 }

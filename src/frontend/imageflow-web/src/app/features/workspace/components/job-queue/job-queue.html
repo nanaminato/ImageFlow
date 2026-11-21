@@ -2,8 +2,8 @@
   <div class="panel-head">
     <span class="step">03</span>
     <div class="panel-titles">
-      <h2>Generation queue</h2>
-      <p>Track progress, inspect attempts, and control dispatch.</p>
+      <h2>{{ 'Generation queue' | t }}</h2>
+      <p>{{ 'Track progress, inspect attempts, and control dispatch.' | t }}</p>
     </div>
   </div>
   @for (job of jobs(); track job.id) {
@@ -11,51 +11,51 @@
       <div class="job-top">
         <div class="job-identity">
           <code class="job-id">{{ job.id.slice(0, 8) }}</code>
-          <span class="status" [attr.data-status]="job.status">{{ job.status }}</span>
+          <span class="status" [attr.data-status]="job.status">{{ job.status | t }}</span>
         </div>
-        <span class="job-mode">{{ job.mode }}</span>
+        <span class="job-mode">{{ job.mode | t }}</span>
       </div>
       <p class="job-progress">
-        {{ completed(job) }} /
-        {{ job.mode === 'Continuous' ? job.maxImages : job.tasks.length }} completed
+        {{ completed(job) }} / {{ job.mode === 'Continuous' ? job.maxImages : job.tasks.length }}
+        {{ 'completed' | t }}
       </p>
       <mat-progress-bar
         mode="determinate"
         [value]="(100 * completed(job)) / (job.maxImages || job.tasks.length || 1)"
       />
       <p class="hint job-estimate">
-        Estimated exposure (includes outstanding/unknown): ${{
+        {{ 'Estimated exposure (includes outstanding/unknown):' | t }} ${{
           job.estimatedExposureUsd | number: '1.2-6'
         }}
         @if (job.budgetUsd !== null) {
-          / ${{ job.budgetUsd | number: '1.2-6' }} estimate limit
+          / ${{ job.budgetUsd | number: '1.2-6' }} {{ 'estimate limit' | t }}
         }
-        · New-request estimate: ${{ job.estimatedCostPerImageUsd | number: '1.2-6' }}
+        {{ '· New-request estimate:' | t }} ${{ job.estimatedCostPerImageUsd | number: '1.2-6' }}
       </p>
       @if (job.stopReason) {
-        <p class="stop-reason">Stopped: {{ job.stopReason }}</p>
+        <p class="stop-reason">{{ 'Stopped:' | t }} {{ job.stopReason | t }}</p>
       }
       <div class="actions">
         @if (job.status === 'Active') {
           <button mat-button (click)="control.emit({ job, action: 'pause' })" [disabled]="busy()">
-            Pause
+            {{ 'Pause' | t }}
           </button>
         }
         @if (job.status === 'Paused') {
           <button mat-button (click)="control.emit({ job, action: 'resume' })" [disabled]="busy()">
-            Resume
+            {{ 'Resume' | t }}
           </button>
         }
         @if (job.status === 'Active' || job.status === 'Paused') {
           <button mat-button (click)="control.emit({ job, action: 'cancel' })" [disabled]="busy()">
-            Cancel
+            {{ 'Cancel' | t }}
           </button>
         }
       </div>
       <div class="task-list">
         @for (task of job.tasks; track task.id) {
           <details>
-            <summary>{{ task.status }} · {{ task.promptText.slice(0, 55) }}</summary>
+            <summary>{{ task.status | t }} · {{ task.promptText.slice(0, 55) }}</summary>
             <app-task-detail
               [task]="task"
               [busy]="busy()"
@@ -68,11 +68,15 @@
     </article>
   } @empty {
     <div class="empty-state">
-      <p class="empty">Queue a reviewed plan to begin. Pending work is stored in SQLite.</p>
+      <p class="empty">
+        {{ 'Queue a reviewed plan to begin. Pending work is stored in SQLite.' | t }}
+      </p>
     </div>
   }
   <p class="hint queue-note">
-    Pause/cancel stops future dispatch. Requests already sent finish and keep their results. Unknown
-    outcomes require checking provider records.
+    {{
+      'Pause/cancel stops future dispatch. Requests already sent finish and keep their results. Unknown outcomes require checking provider records.'
+        | t
+    }}
   </p>
 </section>

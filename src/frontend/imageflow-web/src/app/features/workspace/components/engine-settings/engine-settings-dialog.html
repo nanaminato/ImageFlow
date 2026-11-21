@@ -7,14 +7,14 @@
         />
       </svg>
     </span>
-    <span class="title-text">Engine settings</span>
+    <span class="title-text">{{ 'Engine settings' | t }}</span>
   </h2>
   <button
     mat-icon-button
     mat-dialog-close
     type="button"
     class="settings-close"
-    aria-label="Close settings"
+    [aria-label]="'Close settings' | t"
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M6 6l12 12M18 6 6 18" />
@@ -23,7 +23,10 @@
 </div>
 <mat-dialog-content class="settings-content">
   <p class="settings-lead">
-    Runtime limits for image generation. Values are stored in SQLite and applied immediately.
+    {{
+      'Runtime limits for image generation. Values are stored in SQLite and applied immediately.'
+        | t
+    }}
   </p>
   <app-engine-settings [settings]="store.settings()" [busy]="store.busy()" (save)="save($event)" />
   @if (store.error()) {

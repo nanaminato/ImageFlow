@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { LanguageService } from '../../../../core/i18n/language.service';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,10 +8,11 @@ import { GenerationTask, ReviewInput, RetryInput } from '../../../../core/models
 @Component({
   selector: 'app-task-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, DecimalPipe, FormsModule, MatButtonModule],
+  imports: [TranslatePipe, DatePipe, DecimalPipe, FormsModule, MatButtonModule],
   templateUrl: './task-detail.html',
 })
 export class TaskDetail {
+  readonly i18n = inject(LanguageService);
   readonly task = input.required<GenerationTask>();
   readonly busy = input(false);
   readonly review = output<{ id: string; input: ReviewInput }>();

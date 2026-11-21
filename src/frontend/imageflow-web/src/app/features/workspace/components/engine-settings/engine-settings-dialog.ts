@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -8,7 +9,7 @@ import { EngineSettings } from './engine-settings';
 @Component({
   selector: 'app-engine-settings-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [EngineSettings, MatButtonModule, MatDialogModule],
+  imports: [TranslatePipe, EngineSettings, MatButtonModule, MatDialogModule],
   templateUrl: './engine-settings-dialog.html',
 })
 export class EngineSettingsDialog {

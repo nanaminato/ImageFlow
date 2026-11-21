@@ -1,32 +1,39 @@
 <div class="task-detail">
-  <h3>Task details</h3>
+  <h3>{{ 'Task details' | t }}</h3>
   <code>{{ task().id }}</code>
   <p>{{ task().promptText }}</p>
-  <p>Status: {{ task().status }}</p>
+  <p>{{ 'Status:' | t }} {{ task().status | t }}</p>
   @if (task().error) {
     <p class="error">{{ task().error }}</p>
   }
   @if (task().nextAttemptAt) {
-    <p>Next retry: {{ task().nextAttemptAt | date: 'medium' }}</p>
+    <p>
+      {{ 'Next retry:' | t }}
+      {{ task().nextAttemptAt | date: 'medium' : undefined : i18n.language() }}
+    </p>
   }
-  <h4>Request & retry history</h4>
+  <h4>{{ 'Request & retry history' | t }}</h4>
   @for (attempt of attempts(); track attempt.id; let i = $index) {
     <article class="attempt">
-      <strong>Attempt {{ i + 1 }} · {{ attempt.outcome }}</strong>
+      <strong>{{ 'Attempt' | t }} {{ i + 1 }} · {{ attempt.outcome | t }}</strong>
       <p>
         <code>{{ attempt.id }}</code>
       </p>
       <p>
-        {{ attempt.startedAt | date: 'medium' }} →
-        {{ attempt.finishedAt ? (attempt.finishedAt | date: 'medium') : 'In flight' }}
+        {{ attempt.startedAt | date: 'medium' : undefined : i18n.language() }} →
+        {{
+          attempt.finishedAt
+            ? (attempt.finishedAt | date: 'medium' : undefined : i18n.language())
+            : ('In flight' | t)
+        }}
       </p>
       <p>
-        {{ attempt.provider }} / {{ attempt.model }} · Request ID:
-        {{ attempt.requestId || 'Unavailable' }}
+        {{ attempt.provider }} / {{ attempt.model }} {{ '· Request ID:' | t }}
+        {{ attempt.requestId || 'Unavailable' | t }}
       </p>
       <p>
-        Estimate retained/reserved: ${{ attempt.estimatedCostUsd | number: '1.2-6' }} ·
-        {{ attempt.costDisposition }}
+        {{ 'Estimate retained/reserved:' | t }} ${{ attempt.estimatedCostUsd | number: '1.2-6' }} ·
+        {{ attempt.costDisposition | t }}
       </p>
       @if (attempt.error) {
         <p class="error">{{ attempt.error }}</p>
@@ -37,60 +44,70 @@
       @for (record of task().reviews; track record.id) {
         @if (record.attemptId === attempt.id) {
           <div class="review-record">
-            <strong>Manual review: {{ record.resolution }}</strong>
+            <strong>{{ 'Manual review:' | t }} {{ record.resolution | t }}</strong>
             <p>{{ record.evidence }}</p>
-            <p>{{ record.reviewedAt | date: 'medium' }}</p>
+            <p>{{ record.reviewedAt | date: 'medium' : undefined : i18n.language() }}</p>
             @if (record.retryAuthorizedAt) {
-              <p>Retry authorized: {{ record.retryAuthorizedAt | date: 'medium' }}</p>
+              <p>
+                {{ 'Retry authorized:' | t }}
+                {{ record.retryAuthorizedAt | date: 'medium' : undefined : i18n.language() }}
+              </p>
             }
           </div>
         }
       }
     </article>
   } @empty {
-    <p>No provider request has been sent.</p>
+    <p>{{ 'No provider request has been sent.' | t }}</p>
   }
   @if (task().status === 'Unknown') {
-    <h4>Reconcile unknown outcome</h4>
+    <h4>{{ 'Reconcile unknown outcome' | t }}</h4>
     <p class="hint">
-      Check the provider request ID, output history and billing records first. This app cannot
-      verify the provider's records. Do not paste API keys. Reviewing never sends a request. Wait
-      until all requests in this job finish.
+      {{
+        "Check the provider request ID, output history and billing records first. This app cannot verify the provider's records. Do not paste API keys. Reviewing never sends a request. Wait until all requests in this job finish."
+          | t
+      }}
     </p>
     <label
-      >Review conclusion<select aria-label="Review conclusion" [(ngModel)]="resolution">
-        <option value="Generated">Confirmed generated — retain estimate</option>
-        <option value="NotGeneratedNotCharged">Confirmed not generated AND not charged</option>
-        <option value="Abandon">Abandon — retain uncertain estimate</option>
+      >{{ 'Review conclusion' | t
+      }}<select [attr.aria-label]="'Review conclusion' | t" [(ngModel)]="resolution">
+        <option value="Generated">{{ 'Confirmed generated — retain estimate' | t }}</option>
+        <option value="NotGeneratedNotCharged">
+          {{ 'Confirmed not generated AND not charged' | t }}
+        </option>
+        <option value="Abandon">{{ 'Abandon — retain uncertain estimate' | t }}</option>
       </select></label
     >
     <label
-      >Provider evidence<textarea
-        aria-label="Provider evidence"
+      >{{ 'Provider evidence' | t
+      }}<textarea
+        [attr.aria-label]="'Provider evidence' | t"
         [(ngModel)]="evidence"
         maxlength="2000"
         rows="3"
       ></textarea>
     </label>
     <label
-      ><input type="checkbox" [(ngModel)]="confirmed" /> I checked provider records and confirm this
-      conclusion.</label
+      ><input type="checkbox" [(ngModel)]="confirmed" />
+      {{ 'I checked provider records and confirm this conclusion.' | t }}</label
     >
     <button mat-button (click)="submit()" [disabled]="busy() || !confirmed || !evidence.trim()">
-      Record review without retry
+      {{ 'Record review without retry' | t }}
     </button>
   }
   @if (canRetry()) {
     <p class="hint">
-      No output and no charge was manually confirmed. Authorizing retry queues this task but keeps
-      the job paused. Resume separately. Budget and attempt limits still apply.
+      {{
+        'No output and no charge was manually confirmed. Authorizing retry queues this task but keeps the job paused. Resume separately. Budget and attempt limits still apply.'
+          | t
+      }}
     </p>
     <label
-      ><input type="checkbox" [(ngModel)]="retryConfirmed" /> I authorize a new request that may
-      incur a charge.</label
+      ><input type="checkbox" [(ngModel)]="retryConfirmed" />
+      {{ 'I authorize a new request that may incur a charge.' | t }}</label
     >
     <button mat-button (click)="authorize()" [disabled]="busy() || !retryConfirmed">
-      Authorize reviewed retry
+      {{ 'Authorize reviewed retry' | t }}
     </button>
   }
 </div>

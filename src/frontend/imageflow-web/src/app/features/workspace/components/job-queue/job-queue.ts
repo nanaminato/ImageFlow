@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +8,7 @@ import { ReviewInput, RetryInput, Job, JobAction } from '../../../../core/models
 @Component({
   selector: 'app-job-queue',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TaskDetail, DecimalPipe, MatButtonModule, MatProgressBarModule],
+  imports: [TranslatePipe, TaskDetail, DecimalPipe, MatButtonModule, MatProgressBarModule],
   templateUrl: './job-queue.html',
 })
 export class JobQueue {

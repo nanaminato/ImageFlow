@@ -2,12 +2,12 @@
   <div class="panel-head">
     <span class="step">04</span>
     <div class="panel-titles">
-      <h2>Your collection</h2>
+      <h2>{{ 'Your collection' | t }}</h2>
       <p>
         @if (images().length) {
-          {{ images().length }} generated image{{ images().length === 1 ? '' : 's' }}.
+          {{ 'Generated images' | t }}: {{ images().length }}
         } @else {
-          Finished images will land here, ready to open or download.
+          {{ 'Finished images will land here, ready to open or download.' | t }}
         }
       </p>
     </div>
@@ -21,7 +21,7 @@
           </a>
           <figcaption>
             {{ task.promptText }}<br />
-            <a [href]="'/api/v1/images/' + task.id" download>Download</a>
+            <a [href]="'/api/v1/images/' + task.id" download>{{ 'Download' | t }}</a>
           </figcaption>
         </figure>
       }
@@ -39,7 +39,7 @@
         <circle cx="9" cy="10" r="1.8" />
         <path d="m4 18 5-5 4 4 2.5-2.5L20 19" />
       </svg>
-      <p>No images yet. Plan a collection and queue it to get started.</p>
+      <p>{{ 'No images yet. Plan a collection and queue it to get started.' | t }}</p>
     </div>
   }
 </section>

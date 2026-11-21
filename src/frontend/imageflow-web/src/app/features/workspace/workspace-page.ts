@@ -1,3 +1,5 @@
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LanguageService } from '../../core/i18n/language.service';
 import { ChangeDetectionStrategy, Component, Injector, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -14,6 +16,7 @@ import { ImageGallery } from './components/image-gallery/image-gallery';
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [WorkspaceStore],
   imports: [
+    TranslatePipe,
     MatButtonModule,
     MatDialogModule,
     MatProgressBarModule,
@@ -25,6 +28,7 @@ import { ImageGallery } from './components/image-gallery/image-gallery';
   templateUrl: './workspace-page.html',
 })
 export class WorkspacePage {
+  readonly i18n = inject(LanguageService);
   readonly store = inject(WorkspaceStore);
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);

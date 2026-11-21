@@ -2,12 +2,12 @@
   <div class="panel-head">
     <span class="step">02</span>
     <div class="panel-titles">
-      <h2>Review prompts</h2>
-      <p>Refine each prompt before queuing. Queued collections are locked.</p>
+      <h2>{{ 'Review prompts' | t }}</h2>
+      <p>{{ 'Refine each prompt before queuing. Queued collections are locked.' | t }}</p>
     </div>
   </div>
   @if (plans().length) {
-    <div class="plan-list" aria-label="Saved prompt plans">
+    <div class="plan-list" [attr.aria-label]="'Saved prompt plans' | t">
       @for (plan of plans(); track plan.id) {
         <button
           mat-button
@@ -25,13 +25,13 @@
     <div class="editor-heading">
       <h3>{{ plan.theme }}</h3>
       @if (queuedIds().has(plan.id)) {
-        <span class="status" data-status="Queued">Queued</span>
+        <span class="status" data-status="Queued">{{ 'Queued' | t }}</span>
       }
     </div>
     @for (prompt of plan.prompts; track prompt.id; let i = $index) {
       <div class="prompt-block">
         <mat-form-field appearance="outline">
-          <mat-label>Prompt {{ i + 1 }}</mat-label>
+          <mat-label>{{ 'Prompt' | t }} {{ i + 1 }}</mat-label>
           <textarea
             matInput
             [ngModel]="prompt.text"
@@ -44,7 +44,7 @@
         @if (!queuedIds().has(plan.id)) {
           <div class="prompt-actions">
             <button mat-button type="button" (click)="save.emit(prompt)" [disabled]="busy()">
-              Save prompt
+              {{ 'Save prompt' | t }}
             </button>
           </div>
         }
@@ -53,16 +53,16 @@
     @if (!queuedIds().has(plan.id)) {
       <div class="mode-block">
         <label class="mode-label"
-          >Generation mode
-          <select aria-label="Generation mode" [(ngModel)]="mode" [disabled]="busy()">
-            <option value="Finite">Finite — once per prompt</option>
-            <option value="Continuous">Continuous — cycle reviewed prompts</option>
+          >{{ 'Generation mode' | t }}
+          <select [attr.aria-label]="'Generation mode' | t" [(ngModel)]="mode" [disabled]="busy()">
+            <option value="Finite">{{ 'Finite — once per prompt' | t }}</option>
+            <option value="Continuous">{{ 'Continuous — cycle reviewed prompts' | t }}</option>
           </select>
         </label>
         @if (mode === 'Continuous') {
           <div class="limit-fields">
             <mat-form-field appearance="outline"
-              ><mat-label>Maximum continuous images</mat-label
+              ><mat-label>{{ 'Maximum continuous images' | t }}</mat-label
               ><input
                 matInput
                 type="number"
@@ -73,7 +73,7 @@
                 required
             /></mat-form-field>
             <mat-form-field appearance="outline"
-              ><mat-label>Estimated budget limit (USD)</mat-label
+              ><mat-label>{{ 'Estimated budget limit (USD)' | t }}</mat-label
               ><input
                 matInput
                 type="number"
@@ -85,13 +85,17 @@
             /></mat-form-field>
           </div>
           <p class="hint">
-            Repeats these saved prompts until either limit is reached. Each outstanding request
-            reserves {{ estimatedCostPerImage() }} estimated USD. Provider bills may differ. Pause
-            or cancel at any time.
+            {{ 'Repeats these saved prompts until either limit is reached.' | t }}
+            {{ 'Estimated USD reserved per outstanding request:' | t }}
+            {{ estimatedCostPerImage() }}.
+            {{ 'Provider bills may differ. Pause or cancel at any time.' | t }}
           </p>
           @if (estimatedCostPerImage() <= 0) {
             <p class="error">
-              Set a positive per-image estimate in Engine settings (header) before continuous mode.
+              {{
+                'Set a positive per-image estimate in Engine settings (header) before continuous mode.'
+                  | t
+              }}
             </p>
           }
         }
@@ -103,12 +107,14 @@
         (click)="queue(plan)"
         [disabled]="busy() || queuedIds().has(plan.id) || !validLimits()"
       >
-        {{ queuedIds().has(plan.id) ? 'Already queued' : 'Save & queue collection' }}
+        {{ (queuedIds().has(plan.id) ? 'Already queued' : 'Save & queue collection') | t }}
       </button>
     </div>
   } @else {
     <div class="empty-state">
-      <p class="empty">Your saved prompt plans will appear here. Select a plan to review it.</p>
+      <p class="empty">
+        {{ 'Your saved prompt plans will appear here. Select a plan to review it.' | t }}
+      </p>
     </div>
   }
 </section>

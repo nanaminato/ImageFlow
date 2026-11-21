@@ -45,6 +45,8 @@ Open [the UI](http://localhost:4200), enter a theme, plan 1–20 prompts, edit t
 
 Default data is `src/backend/ImageFlow.Api/data/`: SQLite database and `images/` files. Keep both together when backing up (stop the API first). Configure an absolute `Engine__DataDirectory` to move it. Never commit data or credentials. Relative data paths resolve from the API content root.
 
+The UI supports English and Simplified Chinese. On first visit, the browser's primary system language selects Chinese for `zh` variants and English otherwise. Use the header language selector to switch immediately; a manual choice is saved in this browser's local storage and takes precedence on later visits. Switching preserves unsaved form contents. If browser storage is blocked, switching still works for the current page. User prompts and raw provider/server errors retain their original language.
+
 ### Architecture and navigation
 
 Backend responsibilities now live in real `Domain`, `Application`, `Infrastructure`, `Worker` and `Api` projects. `Program.cs` composes the app; endpoint modules handle HTTP, application services handle planning/job commands, and EF/provider adapters live in Infrastructure. Existing SQLite migrations retain their identities.
