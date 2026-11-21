@@ -1,4 +1,18 @@
 export const zh: Record<string, string> = {
+  'Browse, search, and preview your images.': '浏览、搜索并放大查看作品。',
+  Workspace: '工作区',
+  'Local workspace': '本地工作区',
+  'Image preview': '图片预览',
+  'Image details': '图片详情',
+  'Close preview': '关闭预览',
+  'Previous image': '上一张',
+  'Next image': '下一张',
+  'View image': '查看图片',
+  'Preview thumbnails': '预览缩略图',
+  'Enlarge image': '放大图片',
+  'Left / right arrows to switch · Esc to close': '左右方向键切换 · Esc 关闭',
+  'Image unavailable. You can view another image or close the preview.':
+    '图片暂时无法显示，可切换其他图片或关闭预览。',
   'Workspace navigation': '工作区导航',
   'Create collection': '创建作品集',
   'Prompt management': '提示词管理',

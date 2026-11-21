@@ -1,0 +1,106 @@
+<header class="lightbox-header">
+  <div class="lightbox-heading">
+    <h2 id="image-preview-title">{{ 'Image preview' | t }}</h2>
+    <span class="lightbox-counter" aria-live="polite"
+      >{{ index() + 1 }} / {{ data.images.length }}</span
+    >
+  </div>
+  <div class="lightbox-actions">
+    <button
+      mat-button
+      type="button"
+      [attr.aria-expanded]="detailsOpen()"
+      aria-controls="image-preview-details"
+      (click)="detailsOpen.set(!detailsOpen())"
+    >
+      {{ 'Image details' | t }}
+    </button>
+    <a mat-button [href]="url(current())" download>{{ 'Download' | t }}</a>
+    <button
+      mat-icon-button
+      mat-dialog-close
+      class="lightbox-close"
+      type="button"
+      [aria-label]="'Close preview' | t"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="M6 6l12 12M18 6 6 18" />
+      </svg>
+    </button>
+  </div>
+</header>
+<div class="lightbox-stage">
+  <button
+    mat-icon-button
+    class="lightbox-previous"
+    type="button"
+    [disabled]="data.images.length < 2"
+    [attr.aria-label]="'Previous image' | t"
+    (click)="move(-1)"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="m15 5-7 7 7 7" />
+    </svg>
+  </button>
+  <div class="lightbox-image-area">
+    @if (failed()) {
+      <p role="status" class="lightbox-image-error">
+        {{ 'Image unavailable. You can view another image or close the preview.' | t }}
+      </p>
+    } @else {
+      <img
+        class="lightbox-image"
+        [src]="url(current())"
+        [alt]="current().promptText"
+        (load)="loaded($event)"
+        (error)="failed.set(true)"
+      />
+    }
+  </div>
+  <button
+    mat-icon-button
+    class="lightbox-next"
+    type="button"
+    [disabled]="data.images.length < 2"
+    [attr.aria-label]="'Next image' | t"
+    (click)="move(1)"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="m9 5 7 7-7 7" />
+    </svg>
+  </button>
+</div>
+@if (detailsOpen()) {
+  <section
+    id="image-preview-details"
+    class="lightbox-details"
+    [attr.aria-label]="'Image details' | t"
+  >
+    <p>{{ current().promptText }}</p>
+    <span>{{ dimensions() }} · {{ current().id }}</span>
+  </section>
+}
+<footer class="lightbox-footer">
+  @if (data.images.length > 1) {
+    <nav class="lightbox-thumbnails" [attr.aria-label]="'Preview thumbnails' | t">
+      @for (item of thumbnails(); track item.image.id) {
+        <button
+          type="button"
+          [class.is-selected]="item.index === index()"
+          [attr.aria-pressed]="item.index === index()"
+          [attr.aria-label]="('View image' | t) + ' ' + (item.index + 1)"
+          (click)="select(item.index)"
+        >
+          <img [src]="url(item.image)" alt="" />
+        </button>
+      }
+    </nav>
+  }
+  <p>{{ 'Left / right arrows to switch · Esc to close' | t }}</p>
+</footer>

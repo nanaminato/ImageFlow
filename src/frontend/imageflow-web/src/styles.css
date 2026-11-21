@@ -1,5 +1,7 @@
 @import '@angular/material/prebuilt-themes/azure-blue.css';
 @import './app/shared/styles/workspace.css';
+@import './app/shared/styles/workspace-shell.css';
+@import './app/shared/styles/image-lightbox.css';
 
 html {
   --if-font: Inter, 'Segoe UI', Arial, sans-serif;

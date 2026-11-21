@@ -64,3 +64,7 @@ Manual Unknown review is implemented: task detail/history API and UI, evidence-b
 ## Workspace management pages — implemented 2026-11-21
 
 Creation, prompt management, queue management and the image collection now have separate lazy routes with shared navigation and a single Store/SSE lifecycle. Saved plans support text/status filtering; jobs support text/status/plan filtering and existing controls/review; images support prompt/theme/job filtering and download. Plan/job deep links restore selection on refresh. In-session drafts survive navigation; per-plan generation options remain isolated. No new API operation, automatic retry or paid capability probe is introduced.
+
+## Compact workbench and image lightbox — implemented 2026-11-21
+
+The approved sidebar workbench replaces the desktop horizontal navigation and reduces spacing across management pages. Responsive top navigation and touch-friendly controls remain available on narrow screens. Gallery images open an in-app modal with filtered-order navigation, keyboard arrows, Escape, thumbnails, details and local download. Focus/scroll behavior, broken files and route cleanup are covered by free browser tests; no provider API is added or called for image viewing.

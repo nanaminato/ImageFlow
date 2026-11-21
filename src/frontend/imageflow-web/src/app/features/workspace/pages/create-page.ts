@@ -20,29 +20,31 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
         }}
       </p>
     </section>
-    <app-prompt-planner
-      [(theme)]="view.theme"
-      [(count)]="view.count"
-      [busy]="store.busy()"
-      (create)="create($event)"
-    />
-    <section class="management-overview" [attr.aria-label]="'Management overview' | t">
-      <a routerLink="/prompts"
-        ><strong>{{ store.plans().length }}</strong
-        ><span>{{ 'Saved prompt plans' | t }}</span
-        ><small>{{ 'Review and organize your plans' | t }} →</small></a
-      >
-      <a routerLink="/queue"
-        ><strong>{{ store.jobs().length }}</strong
-        ><span>{{ 'Generation jobs' | t }}</span
-        ><small>{{ 'Inspect progress and control requests' | t }} →</small></a
-      >
-      <a routerLink="/gallery"
-        ><strong>{{ store.images().length }}</strong
-        ><span>{{ 'Generated images' | t }}</span
-        ><small>{{ 'Browse and download your images' | t }} →</small></a
-      >
-    </section>
+    <div class="create-layout">
+      <app-prompt-planner
+        [(theme)]="view.theme"
+        [(count)]="view.count"
+        [busy]="store.busy()"
+        (create)="create($event)"
+      />
+      <section class="management-overview" [attr.aria-label]="'Management overview' | t">
+        <a routerLink="/prompts"
+          ><strong>{{ store.plans().length }}</strong
+          ><span>{{ 'Saved prompt plans' | t }}</span
+          ><small>{{ 'Review and organize your plans' | t }} →</small></a
+        >
+        <a routerLink="/queue"
+          ><strong>{{ store.jobs().length }}</strong
+          ><span>{{ 'Generation jobs' | t }}</span
+          ><small>{{ 'Inspect progress and control requests' | t }} →</small></a
+        >
+        <a routerLink="/gallery"
+          ><strong>{{ store.images().length }}</strong
+          ><span>{{ 'Generated images' | t }}</span
+          ><small>{{ 'Browse and download your images' | t }} →</small></a
+        >
+      </section>
+    </div>
   `,
 })
 export class CreatePage {

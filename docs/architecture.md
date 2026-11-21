@@ -113,3 +113,11 @@ The parent `WorkspacePage` owns `WorkspaceStore`, `WorkspaceViewState`, the shar
 Store commands return a success flag, so wrappers navigate only after successful operations. DestroyRef guards prevent a finished request from redirecting a user who already left the originating page. Management navigation itself never authorizes a remote request. Shared error/busy/live state and language selection remain visible across pages.
 
 Browser scenarios cover independent page content, create→review→queue→gallery, search/status/job filters, queued prompt locking, unsaved draft retention across navigation, direct links/reload/back navigation, unchanged manual retry authorization, both languages and mobile overflow. Tests use a separate Mock API/database or fully intercepted fixtures.
+
+## Compact workbench and image viewing
+
+The workspace shell uses a 192px sticky desktop sidebar and a compact content header. A 900px breakpoint reflows it into top navigation; mobile fields retain 42–44px targets, and the gallery uses two columns. Base workspace styles, shell-specific responsive styles and overlay styles are separated in `workspace.css`, `workspace-shell.css` and `image-lightbox.css`.
+
+`ImageGallery` opens a Material `ImageLightbox` dialog from the image button. It copies the current filtered task array, so subsequent SSE updates cannot reorder a viewing session. Selection is a local signal; previous/next and keyboard arrows wrap within that array. At most five surrounding thumbnails render, and details are collapsed initially. The image uses `object-fit: contain`; original dimensions are read from the loaded local file, not guessed from provider defaults. Missing files show an error without trapping navigation.
+
+Material provides dialog focus trapping, focus restoration, Escape/backdrop dismissal and scroll blocking when the document is scrollable. The gallery also closes its dialog on destruction to avoid orphan overlays on route changes. Keyboard subscriptions are tied to DestroyRef; previewing and downloading use only the existing local image GET endpoint and never authorize generation or retry. Browser tests cover desktop density/sidebar geometry, 320–1920px layouts, portrait/landscape files, filtering, one-image behavior, cyclic navigation, thumbnails, keyboard/focus/scroll handling, missing files and back navigation.

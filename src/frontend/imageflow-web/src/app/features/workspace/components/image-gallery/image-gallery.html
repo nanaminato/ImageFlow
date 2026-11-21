@@ -1,25 +1,19 @@
-<section class="panel">
-  <div class="panel-head">
-    <div class="panel-titles">
-      <h2>{{ 'Your collection' | t }}</h2>
-      <p>
-        @if (images().length) {
-          {{ 'Generated images' | t }}: {{ images().length }}
-        } @else {
-          {{ 'Finished images will land here, ready to open or download.' | t }}
-        }
-      </p>
-    </div>
-  </div>
+<section class="gallery-panel" [attr.aria-label]="'Your collection' | t">
   @if (images().length) {
     <div class="gallery">
       @for (task of images(); track task.id) {
         <figure>
-          <a class="image-link" [href]="'/api/v1/images/' + task.id" target="_blank" rel="noopener">
+          <button
+            type="button"
+            class="image-link"
+            [attr.aria-label]="('Enlarge image' | t) + ': ' + task.promptText"
+            (click)="open(task)"
+          >
             <img [src]="'/api/v1/images/' + task.id" [alt]="task.promptText" loading="lazy" />
-          </a>
+            <span class="image-zoom-hint" aria-hidden="true">{{ 'Enlarge image' | t }}</span>
+          </button>
           <figcaption>
-            {{ task.promptText }}<br />
+            <p>{{ task.promptText }}</p>
             <a [href]="'/api/v1/images/' + task.id" download>{{ 'Download' | t }}</a>
           </figcaption>
         </figure>

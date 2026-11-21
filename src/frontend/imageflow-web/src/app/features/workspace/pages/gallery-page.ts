@@ -17,7 +17,7 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
         <span class="eyebrow">{{ 'Your images, organized' | t }}</span>
         <h1>{{ 'Collection library' | t }}</h1>
         <p>
-          {{ 'Browse finished images by collection, search prompts, and download originals.' | t }}
+          {{ 'Browse, search, and preview your images.' | t }}
         </p>
       </div>
       <a class="page-action" routerLink="/create">+ {{ 'Create collection' | t }}</a>
