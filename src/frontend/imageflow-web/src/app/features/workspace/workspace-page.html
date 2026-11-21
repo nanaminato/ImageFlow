@@ -109,8 +109,8 @@
         <span class="provider-pill">
           @if (store.settings(); as settings) {
             {{ settings.provider }}
-            <span class="provider-count"
-              >· {{ settings.maxConcurrency }} {{ 'outstanding requests' | t }}</span
+            <span class="provider-count" [title]="'Running image requests, updated from job status.' | t"
+              >· {{ 'Concurrency limit' | t }}: {{ settings.maxConcurrency }} · {{ 'Generating now' | t }}: {{ store.runningImageRequests() }}</span
             >
           } @else {
             {{ 'Loading settings…' | t }}

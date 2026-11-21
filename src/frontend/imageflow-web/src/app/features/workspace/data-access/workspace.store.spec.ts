@@ -126,6 +126,21 @@ describe('WorkspaceStore', () => {
     expect(await store.deleteItem({ kind: 'plan', id: plan.id, ids: [plan.id, 'plan-2'], label: 'batch', jobs: 1, images: 0, running: false })).toBeNull();
     expect(store.plans()).toHaveLength(2);
   });
+  it('counts running image requests across jobs and updates after SSE without changing the configured limit', async () => {
+    api.jobs.mockResolvedValue([
+      { id: 'paused-job', status: 'Paused', tasks: [{ status: 'Running' }, { status: 'Pending' }, { status: 'Unknown' }] },
+      { id: 'active-job', status: 'Active', tasks: [{ status: 'Running' }, { status: 'Completed' }] },
+    ]);
+    const store = await initialized();
+    expect(store.runningImageRequests()).toBe(2);
+    expect(store.hasRunningRequests()).toBe(true);
+    api.jobs.mockResolvedValue([{ id: 'paused-job', status: 'Paused', tasks: [{ status: 'Completed' }, { status: 'Pending' }] }]);
+    events.next(true);
+    await vi.waitFor(() => expect(store.runningImageRequests()).toBe(0));
+    expect(store.hasRunningRequests()).toBe(false);
+    expect(store.settings()?.maxConcurrency).toBe(2);
+    expect(store.providerLabel()).toContain('Concurrency limit: 2 · Generating now: 0');
+  });
   it('loads state and selects a saved plan on initialization', async () => {
     const store = await initialized();
     expect(store.selectedPlan()?.id).toBe(plan.id);
@@ -184,7 +199,7 @@ describe('WorkspaceStore', () => {
       maxConcurrency: 4,
       estimatedCostPerImageUsd: 0.02,
     });
-    expect(store.providerLabel()).toContain('4 outstanding requests');
+    expect(store.providerLabel()).toContain('Concurrency limit: 4');
     expect(store.settings()?.estimatedCostPerImageUsd).toBe(0.02);
   });
   it('keeps persisted settings visible when an update fails', async () => {

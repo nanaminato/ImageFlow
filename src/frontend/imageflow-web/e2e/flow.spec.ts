@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 test('plan, edit, queue and view generated collection', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Mock · 2 outstanding requests')).toBeVisible();
+  await expect(page.getByText('Mock · Concurrency limit: 2 · Generating now: 0')).toBeVisible();
   await page.getByLabel('Theme & constraints').fill('Quiet coastal towns in watercolor');
   await page.getByLabel('Images', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Plan prompts', exact: true }).click();
@@ -52,7 +52,7 @@ test('planning errors keep existing state and release the form', async ({ page }
 
 test('engine settings stay off the main page, open in a dialog and persist', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Mock · 2 outstanding requests')).toBeVisible();
+  await expect(page.getByText('Mock · Concurrency limit: 2 · Generating now: 0')).toBeVisible();
   await expect(page.getByLabel('Concurrent image requests')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Engine settings' }).click();
@@ -63,11 +63,11 @@ test('engine settings stay off the main page, open in a dialog and persist', asy
   await expect(page.getByLabel('Concurrent image requests')).toHaveValue('1');
   await page.getByRole('button', { name: 'Save settings', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
-  await expect(page.getByText('Mock · 1 outstanding requests')).toBeVisible();
+  await expect(page.getByText('Mock · Concurrency limit: 1 · Generating now: 0')).toBeVisible();
 
   await page.reload();
   await expect(page.getByLabel('Concurrent image requests')).toHaveCount(0);
-  await expect(page.getByText('Mock · 1 outstanding requests')).toBeVisible();
+  await expect(page.getByText('Mock · Concurrency limit: 1 · Generating now: 0')).toBeVisible();
   await page.getByRole('button', { name: 'Engine settings' }).click();
   await expect(page.getByLabel('Concurrent image requests')).toHaveValue('1');
   await expect(page.getByLabel('Estimated USD per image request')).toHaveValue('0.01');

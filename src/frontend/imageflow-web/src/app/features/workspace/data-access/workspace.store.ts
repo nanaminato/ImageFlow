@@ -47,18 +47,22 @@ const initialState: WorkspaceState = {
 
 export const WorkspaceStore = signalStore(
   withState(initialState),
-  withComputed((store) => ({
+  withComputed((store) => {
+    const runningImageRequests = computed(() => store.jobs().reduce((count, job) => count + job.tasks.filter(t => t.status === 'Running').length, 0));
+    return {
     selectedPlan: computed(
       () => store.plans().find((p) => p.id === store.selectedPlanId()) ?? null,
     ),
     queuedPlanIds: computed(() => new Set(store.jobs().map((j) => j.planId))),
     images: computed(() => store.jobs().flatMap((j) => j.tasks.filter((t) => t.imagePath))),
-    hasRunningRequests: computed(() => store.jobs().some(j => j.tasks.some(t => t.status === 'Running'))),
+    runningImageRequests,
+    hasRunningRequests: computed(() => runningImageRequests() > 0),
     providerLabel: computed(() => {
       const s = store.settings();
-      return s ? `${s.provider} · ${s.maxConcurrency} outstanding requests` : 'Loading settings…';
+      return s ? `${s.provider} · Concurrency limit: ${s.maxConcurrency} · Generating now: ${runningImageRequests()}` : 'Loading settings…';
     }),
-  })),
+    };
+  }),
   withMethods((store, api = inject(GenerationApi)) => {
     let subscription: Subscription | undefined;
     let refreshing = false;

@@ -1,4 +1,7 @@
 export const zh: Record<string, string> = {
+  'Concurrency limit': '并发上限',
+  'Generating now': '当前生成',
+  'Running image requests, updated from job status.': '正在进行的图像请求数，随任务状态更新。',
   'Selected plans and their jobs, images and history will be deleted. This cannot be undone.': '将删除选中的方案及关联任务、图片和历史记录，无法撤销。',
   'Generation is in progress. Wait before deleting this plan.': '正在生成，请等待请求结束后再删除此方案。',
   'Created': '创建于',
