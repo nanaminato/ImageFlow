@@ -21,8 +21,9 @@ public sealed class JobService(IGenerationRepository repository, QueueGate gate,
                 (budgetUsd is { } budget && (decimal.Round(budget, 6) != budget || current.EstimatedCostPerImageUsd <= 0));
             if (invalidMode || invalidContinuousLimits || invalidFiniteCount || invalidBudget)
                 return new(Failure: FailureKind.InvalidInput, Message: "Continuous mode requires 1–1000 images, a positive USD estimate limit and a positive configured per-image estimate (up to six decimal places). Finite image count equals its plan size.");
-            var execution = options.CreateImageRequest("");
-            ModelCatalog.ValidateImage(options, execution);
+            var execution = RuntimeSettingsService.Execution(current, options);
+            try { ModelCatalog.ValidateImage(options, execution); }
+            catch (InvalidOperationException) { return new(Failure: FailureKind.InvalidInput, Message: "Saved generation settings are unavailable for this provider. Review Engine settings."); }
             var job = new Job
             {
                 PlanId = plan.Id,

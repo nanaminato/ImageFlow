@@ -10,6 +10,16 @@ const defaultGeneration: GenerationDraft = { mode: 'Finite', maxImages: 10, budg
 // Shared by routed pages for the lifetime of the workspace shell. No API or secrets.
 @Injectable()
 export class WorkspaceViewState {
+  reset(): void {
+    this.theme.set('');
+    this.count.set(3);
+    this.generation.set({});
+    this.planSearch.set('');
+    this.planStatus.set('all');
+    this.jobSearch.set('');
+    this.jobStatus.set('all');
+    this.imageSearch.set('');
+  }
   readonly theme = signal('');
   readonly count = signal(3);
   private readonly generation = signal<Record<string, GenerationDraft>>({});

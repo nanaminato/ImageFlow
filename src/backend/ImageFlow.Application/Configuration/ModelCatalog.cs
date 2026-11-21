@@ -3,6 +3,7 @@ namespace ImageFlow;
 // Deliberately reviewed adapter capabilities, not discovery from /models.
 public sealed class CompatibleCapabilities
 {
+    public bool CustomDimensions { get; set; }
     public string[] PromptModels { get; set; } = [];
     public string[] ImageModels { get; set; } = [];
     public string[] Sizes { get; set; } = [];
@@ -31,7 +32,18 @@ public static class ModelCatalog
             ["low", "medium", "high", "xhigh", "max"], ["low", "medium", "high"], ["png"], null, true),
         new ImageCapability("gpt-image-2.6-sunburst", ["1024x1024", "1536x1024", "1024x1536"],
             ["low", "medium", "high", "xhigh", "max"], ["low", "medium", "high"], ["png"], null, true)
-    });
+    }.Concat(new[] { "gpt-image-2.5-flare", "gpt-image-2.5-sunburst" }.Select(model =>
+        new ImageCapability(model, ["1024x1024", "1536x1024", "1024x1536"],
+            ["low", "medium", "high", "xhigh", "max"], ["none"], ["png"], null, true))).ToArray());
+
+    public static ImageCapability[] AvailableImages(EngineOptions options)
+    {
+        if (options.Provider == "Mock") return [new("mock-svg", ["768x512"], ["preview"], ["none"], ["svg"], null)];
+        if (options.Provider == "OpenAI") return OfficialImages.Where(x => !(x.ShutdownDate <= DateOnly.FromDateTime(DateTime.UtcNow))).ToArray();
+        var c = options.CompatibleCapabilities;
+        return c.ImageModels.Select(model => new ImageCapability(model, c.Sizes, c.Qualities,
+            model.StartsWith("gpt-image-2.5-") ? c.Complexities.Where(x => x == "none").ToArray() : c.Complexities.Where(x => x != "none").ToArray(), c.Formats, null, c.CustomDimensions)).ToArray();
+    }
 
     public static void ValidatePlanner(EngineOptions options)
     {
@@ -54,14 +66,7 @@ public static class ModelCatalog
                 request.Complexity != "none" || request.OutputFormat != "svg") throw new InvalidOperationException("Unsupported Mock configuration.");
             return;
         }
-        ImageCapability? capability;
-        if (request.Provider == "OpenAI") capability = OfficialImages.SingleOrDefault(x => x.Model == request.Model);
-        else
-        {
-            var c = options.CompatibleCapabilities;
-            capability = c.ImageModels.Contains(request.Model)
-                ? new(request.Model, c.Sizes, c.Qualities, c.Complexities, c.Formats, null) : null;
-        }
+        var capability = AvailableImages(options).SingleOrDefault(x => x.Model == request.Model);
         if (capability == null || capability.ShutdownDate <= DateOnly.FromDateTime(DateTime.UtcNow) ||
             !(capability.Sizes.Contains(request.Size) || capability.CustomDimensions && ValidDimensions(request.Size)) || !capability.Qualities.Contains(request.Quality) ||
             !capability.Complexities.Contains(request.Complexity) || !capability.Formats.Contains(request.OutputFormat) || request.OutputFormat != "png")

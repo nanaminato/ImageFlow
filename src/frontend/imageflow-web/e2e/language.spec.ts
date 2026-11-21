@@ -14,7 +14,9 @@ test.describe('interface language', () => {
         });
       } else if (path.endsWith('/settings')) {
         await route.fulfill({
-          json: { provider: 'Mock', maxConcurrency: 2, estimatedCostPerImageUsd: 0, revision: 1 },
+          json: { provider: 'Mock', maxConcurrency: 2, estimatedCostPerImageUsd: 0, revision: 1,
+            imageModel: 'mock-svg', imageSize: '768x512', imageQuality: 'preview', imageComplexity: 'none', outputFormat: 'svg',
+            imageCapabilities: [{ model: 'mock-svg', sizes: ['768x512'], qualities: ['preview'], complexities: ['none'], formats: ['svg'], customDimensions: false }] },
         });
       } else {
         await route.fulfill({ json: [] });
@@ -125,6 +127,7 @@ test.describe('interface language', () => {
           imageQuality: 'preview',
           imageComplexity: 'none',
           outputFormat: 'svg',
+          imageCapabilities: [{ model: 'mock-svg', sizes: ['768x512'], qualities: ['preview'], complexities: ['none'], formats: ['svg'], customDimensions: false }],
         },
       }),
     );

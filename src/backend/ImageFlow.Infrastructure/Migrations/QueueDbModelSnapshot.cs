@@ -242,6 +242,18 @@ namespace ImageFlow.Api.Migrations
                     b.Property<decimal>("EstimatedCostPerImageUsd")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ImageComplexity")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageModel")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageQuality")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageSize")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("MaxConcurrency")
                         .HasColumnType("INTEGER");
 

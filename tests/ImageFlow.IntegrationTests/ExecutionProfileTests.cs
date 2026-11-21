@@ -66,6 +66,70 @@ public class ExecutionProfileTests
     }
 
     [Fact]
+    public async Task EditableGenerationSettingsPersistAndJobsKeepTheirSnapshot()
+    {
+        string path;
+        Guid id;
+        await using (var app = new AppFactory { Worker = false, Overrides = Configuration(), ApiHandler = new InterceptedApi() })
+        {
+            path = app.DataPath;
+            using var client = app.CreateClient();
+            var before = await Enqueue(client); id = before.Id;
+            var response = await client.PutAsJsonAsync("/api/v1/settings", new SettingsUpdate(3, 0.02m,
+                "gpt-image-2.5-flare", "1536x864", "xhigh", "none"));
+            response.EnsureSuccessStatusCode();
+            var view = (await response.Content.ReadFromJsonAsync<SettingsView>())!;
+            Assert.True(view.EstimateConfirmed);
+            Assert.Contains(view.ImageCapabilities!, x => x.Model == "gpt-image-2.5-sunburst");
+            var after = await Enqueue(client);
+            Assert.Equal("gpt-image-2.5-flare", after.Model);
+            Assert.Equal("1536x864", after.ImageSize);
+            Assert.Equal("none", after.ImageComplexity);
+            var old = (await client.GetFromJsonAsync<Job>($"/api/v1/jobs/{id}"))!;
+            Assert.Equal(ModelCatalog.DefaultImageModel, old.Model);
+            Assert.Equal("1024x1024", old.ImageSize);
+        }
+        await using var restarted = new AppFactory { Worker = false, ExistingPath = path, Overrides = Configuration() };
+        using var c = restarted.CreateClient();
+        var restored = (await c.GetFromJsonAsync<SettingsView>("/api/v1/settings"))!;
+        Assert.Equal("gpt-image-2.5-flare", restored.ImageModel);
+        Assert.Equal("1536x864", restored.ImageSize);
+        Assert.Equal("xhigh", restored.ImageQuality);
+    }
+
+    [Theory]
+    [InlineData("gpt-image-2.5-flare", "1024x1024", "high")]
+    [InlineData("gpt-image-2.6-flare", "1025x1024", "high")]
+    [InlineData("gpt-image-2.6-flare", "3840x3840", "high")]
+    [InlineData("undeclared-model", "1024x1024", "high")]
+    public async Task InvalidGenerationSettingsAreAtomic(string model, string size, string complexity)
+    {
+        await using var app = new AppFactory { Worker = false, Overrides = Configuration() };
+        using var client = app.CreateClient();
+        var response = await client.PutAsJsonAsync("/api/v1/settings", new SettingsUpdate(7, 1, model, size, "high", complexity));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var view = (await client.GetFromJsonAsync<SettingsView>("/api/v1/settings"))!;
+        Assert.Equal(2, view.MaxConcurrency);
+        Assert.Equal(ModelCatalog.DefaultImageModel, view.ImageModel);
+        Assert.Equal(1, view.Revision);
+    }
+
+    [Fact]
+    public async Task Image25OmitsUnsupportedComplexityOnWire()
+    {
+        var handler = new InterceptedApi();
+        await using var app = new AppFactory { Overrides = Configuration(), ApiHandler = handler };
+        using var client = app.CreateClient();
+        (await client.PutAsJsonAsync("/api/v1/settings", new SettingsUpdate(2, 0, "gpt-image-2.5-sunburst", "1024x1536", "high", "none"))).EnsureSuccessStatusCode();
+        var job = await Enqueue(client);
+        await Wait(client, job.Id, "Completed");
+        using var body = JsonDocument.Parse(Assert.Single(handler.Images));
+        Assert.Equal("gpt-image-2.5-sunburst", body.RootElement.GetProperty("model").GetString());
+        Assert.Equal("1024x1536", body.RootElement.GetProperty("size").GetString());
+        Assert.False(body.RootElement.TryGetProperty("complexity", out _));
+    }
+
+    [Fact]
     public async Task OfficialPlanToPngPersistsExactRequestUsageAndRequestId()
     {
         var handler = new InterceptedApi();
@@ -99,7 +163,7 @@ public class ExecutionProfileTests
     }
 
     [Fact]
-    public async Task RestartUsesSavedGenerationOptionsInsteadOfNewDefaultsAndRequiresNewEstimate()
+    public async Task RestartUsesSavedDefaultsUntilAnExplicitSettingsChange()
     {
         string path; Guid id;
         await using (var first = new AppFactory { Worker = false, Overrides = Configuration(), ApiHandler = new InterceptedApi() })
@@ -119,11 +183,10 @@ public class ExecutionProfileTests
         Assert.Equal("1024x1024", request.RootElement.GetProperty("size").GetString());
         Assert.Equal("high", request.RootElement.GetProperty("complexity").GetString());
         Assert.Equal(3, job.AttemptLimit); Assert.Equal(0.01m, job.EstimatedExposureUsd);
-        Assert.False((await c.GetFromJsonAsync<SettingsView>("/api/v1/settings"))!.EstimateConfirmed);
+        Assert.True((await c.GetFromJsonAsync<SettingsView>("/api/v1/settings"))!.EstimateConfirmed);
         var planResponse = await c.PostAsJsonAsync("/api/v1/plans", new PlanRequest("new", 1)); planResponse.EnsureSuccessStatusCode();
         var plan = (await planResponse.Content.ReadFromJsonAsync<Plan>())!;
-        Assert.Equal(HttpStatusCode.BadRequest, (await c.PostAsJsonAsync("/api/v1/jobs", new JobRequest(plan.Id))).StatusCode);
-        (await c.PutAsJsonAsync("/api/v1/settings", new SettingsUpdate(1, 0.02m))).EnsureSuccessStatusCode();
+        (await c.PutAsJsonAsync("/api/v1/settings", new SettingsUpdate(1, 0.02m, "gpt-image-2.6-sunburst", "1536x1024", "high", "low"))).EnsureSuccessStatusCode();
         var created = await c.PostAsJsonAsync("/api/v1/jobs", new JobRequest(plan.Id)); created.EnsureSuccessStatusCode();
         var newJob = (await created.Content.ReadFromJsonAsync<Job>())!;
         Assert.Equal("gpt-image-2.6-sunburst", newJob.Model); Assert.Equal(0.02m, newJob.EstimatedCostPerImageUsd);

@@ -90,6 +90,9 @@
         ><span aria-hidden="true">/</span><strong>{{ pageLabel() | t }}</strong>
       </div>
       <div class="header-tools">
+        <button mat-button type="button" class="clear-workspace-button" (click)="openClearWorkspace()" [disabled]="store.busy()">
+          {{ 'Clear workspace' | t }}
+        </button>
         <select
           class="language-select"
           [attr.aria-label]="'Language' | t"

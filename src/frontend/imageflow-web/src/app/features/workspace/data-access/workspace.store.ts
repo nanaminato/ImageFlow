@@ -21,6 +21,7 @@ import {
   Plan,
   PlanInput,
   Prompt,
+  WorkspaceClearResult,
 } from '../../../core/models/generation.models';
 
 interface WorkspaceState {
@@ -50,6 +51,7 @@ export const WorkspaceStore = signalStore(
     ),
     queuedPlanIds: computed(() => new Set(store.jobs().map((j) => j.planId))),
     images: computed(() => store.jobs().flatMap((j) => j.tasks.filter((t) => t.imagePath))),
+    hasRunningRequests: computed(() => store.jobs().some(j => j.tasks.some(t => t.status === 'Running'))),
     providerLabel: computed(() => {
       const s = store.settings();
       return s ? `${s.provider} · ${s.maxConcurrency} outstanding requests` : 'Loading settings…';
@@ -59,6 +61,7 @@ export const WorkspaceStore = signalStore(
     let subscription: Subscription | undefined;
     let refreshing = false;
     let destroyed = false;
+    let dataVersion = 0;
     const report = (error: unknown) => {
       const message =
         error instanceof HttpErrorResponse
@@ -84,9 +87,10 @@ export const WorkspaceStore = signalStore(
     const refresh = async () => {
       if (refreshing || destroyed) return;
       refreshing = true;
+      const version = dataVersion;
       try {
         const [jobs, settings] = await Promise.all([api.jobs(), api.settings()]);
-        if (!destroyed)
+        if (!destroyed && version === dataVersion)
           patchState(store, {
             jobs,
             ...(settings.revision > (store.settings()?.revision ?? -1) ? { settings } : {}),
@@ -96,6 +100,16 @@ export const WorkspaceStore = signalStore(
       }
     };
     return {
+      async clearWorkspace(): Promise<WorkspaceClearResult | null> {
+        let result: WorkspaceClearResult | null = null;
+        await perform(async () => {
+          dataVersion++;
+          result = await api.clearWorkspace();
+          dataVersion++;
+          if (!destroyed) patchState(store, { plans: [], jobs: [], selectedPlanId: null });
+        });
+        return result;
+      },
       async initialize() {
         await perform(async () => {
           const [settings, plans, jobs] = await Promise.all([

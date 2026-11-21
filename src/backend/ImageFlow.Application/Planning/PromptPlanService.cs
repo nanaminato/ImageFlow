@@ -6,6 +6,9 @@ public sealed class PromptPlanService(IPromptPlanningProvider planner, IGenerati
     {
         if (string.IsNullOrWhiteSpace(theme) || theme.Length > 2000 || count is < 1 or > 20)
             return new(Failure: FailureKind.InvalidInput, Message: "Theme required (max 2000 characters); count must be 1–20.");
+        await gate.Mutex.WaitAsync(ct);
+        try { gate.ActivePlanningRequests++; }
+        finally { gate.Mutex.Release(); }
         try
         {
             var texts = await planner.PlanAsync(theme.Trim(), count, ct);
@@ -18,6 +21,12 @@ public sealed class PromptPlanService(IPromptPlanningProvider planner, IGenerati
             return new(plan, Created: true);
         }
         catch (ProviderFailure e) { return new(Failure: FailureKind.Provider, Message: e.Message); }
+        finally
+        {
+            await gate.Mutex.WaitAsync(CancellationToken.None);
+            try { gate.ActivePlanningRequests--; }
+            finally { gate.Mutex.Release(); }
+        }
     }
     public async Task<OperationResult<Prompt>> Edit(Guid id, string text, CancellationToken ct)
     {

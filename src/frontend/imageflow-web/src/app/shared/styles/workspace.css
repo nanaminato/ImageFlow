@@ -1176,3 +1176,10 @@ a {
     flex-basis: 100%;
   }
 }
+
+.generation-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.generation-fields .settings-wide { grid-column: 1 / -1; }
+@media (max-width: 480px) { .generation-fields { grid-template-columns: minmax(0, 1fr); } }
+
+.clear-workspace-button { color: #a12a20 !important; }
+.clear-confirm-button:not(:disabled) { background: #b3261e !important; color: white !important; }

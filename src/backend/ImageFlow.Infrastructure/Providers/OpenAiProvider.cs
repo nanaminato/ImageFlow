@@ -45,10 +45,12 @@ public class OpenAiProvider(HttpClient http, EngineOptions options) : IPromptPla
     public async Task<ImageResult> GenerateAsync(ImageGenerationRequest request, CancellationToken ct)
     {
         ModelCatalog.ValidateImage(options, request);
-        var (doc, id) = await Send(new Uri(request.Endpoint), "images/generations", new {
-            model = request.Model, prompt = request.Prompt, n = 1, size = request.Size,
-            quality = request.Quality, complexity = request.Complexity, output_format = request.OutputFormat
-        }, ct);
+        var body = new Dictionary<string, object> {
+            ["model"] = request.Model, ["prompt"] = request.Prompt, ["n"] = 1, ["size"] = request.Size,
+            ["quality"] = request.Quality, ["output_format"] = request.OutputFormat
+        };
+        if (request.Complexity != "none") body["complexity"] = request.Complexity;
+        var (doc, id) = await Send(new Uri(request.Endpoint), "images/generations", body, ct);
         using (doc)
         {
             var usage = doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("usage", out var u) ? u.GetRawText() : null;

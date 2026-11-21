@@ -1,0 +1,25 @@
+<h2 mat-dialog-title>{{ 'Clear workspace' | t }}</h2>
+<mat-dialog-content>
+  @if (!cleared()) {
+    <p>{{ 'Permanently delete all plans, prompts, jobs, images, usage and review history in this workspace?' | t }}</p>
+    <p class="hint">{{ 'Plans' | t }}: {{ store.plans().length }} · {{ 'Jobs' | t }}: {{ store.jobs().length }} · {{ 'Images' | t }}: {{ store.images().length }}</p>
+    <p>{{ 'Engine settings are kept. This cannot be undone and does not reverse provider charges. Save any images or records you need first.' | t }}</p>
+  }
+  @if (store.hasRunningRequests()) {
+    <p class="error" role="alert">{{ 'Pause jobs and wait for in-flight requests to finish before clearing.' | t }}</p>
+  }
+  @if (remaining()) {
+    <p class="error" role="alert">{{ 'Records were cleared, but some image files could not be removed. Close programs using those files, then retry cleanup.' | t }} ({{ remaining() }})</p>
+  }
+  <mat-checkbox [(ngModel)]="acknowledged" [disabled]="submitting()">
+    {{ 'I understand that these records and images will be permanently deleted.' | t }}
+  </mat-checkbox>
+  @if (store.error()) { <p class="error" role="alert">{{ store.error() | t }}</p> }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close [disabled]="submitting()">{{ 'Cancel' | t }}</button>
+  <button mat-flat-button class="clear-confirm-button" (click)="clear()"
+    [disabled]="!acknowledged || store.busy() || store.hasRunningRequests() || submitting()">
+    {{ (remaining() ? 'Retry file cleanup' : 'Permanently clear') | t }}
+  </button>
+</mat-dialog-actions>

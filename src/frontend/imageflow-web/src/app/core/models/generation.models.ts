@@ -53,7 +53,12 @@ export interface Job {
   estimatedExposureUsd: number;
   stopReason: string | null;
 }
+export interface ImageCapability {
+  model: string; sizes: string[]; qualities: string[]; complexities: string[];
+  formats: string[]; customDimensions: boolean;
+}
 export interface EngineSettings {
+  imageCapabilities?: ImageCapability[];
   provider: string;
   maxConcurrency: number;
   promptModel: string;
@@ -72,8 +77,19 @@ export interface PlanInput {
 }
 
 export interface SettingsInput {
+  imageModel?: string;
+  imageSize?: string;
+  imageQuality?: string;
+  imageComplexity?: string;
   maxConcurrency: number;
   estimatedCostPerImageUsd: number;
+}
+export interface WorkspaceClearResult {
+  plans: number;
+  jobs: number;
+  tasks: number;
+  images: number;
+  remainingImageFiles: number;
 }
 export interface JobOptions {
   mode: 'Finite' | 'Continuous';

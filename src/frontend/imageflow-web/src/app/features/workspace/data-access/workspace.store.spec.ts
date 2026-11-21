@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GenerationApi } from '../../../core/data-access/generation-api.service';
-import { Plan } from '../../../core/models/generation.models';
+import { Job, Plan } from '../../../core/models/generation.models';
 import { WorkspaceStore } from './workspace.store';
 
 describe('WorkspaceStore', () => {
@@ -25,6 +25,7 @@ describe('WorkspaceStore', () => {
     events: ReturnType<typeof vi.fn>;
     reviewTask: ReturnType<typeof vi.fn>;
     retryTask: ReturnType<typeof vi.fn>;
+    clearWorkspace: ReturnType<typeof vi.fn>;
   };
   beforeEach(() => {
     events = new Subject<boolean>();
@@ -45,6 +46,7 @@ describe('WorkspaceStore', () => {
       events: vi.fn().mockReturnValue(events),
       reviewTask: vi.fn().mockResolvedValue({}),
       retryTask: vi.fn().mockResolvedValue({}),
+      clearWorkspace: vi.fn().mockResolvedValue({ plans: 1, jobs: 0, tasks: 0, images: 0, remainingImageFiles: 0 }),
     };
     TestBed.configureTestingModule({
       providers: [WorkspaceStore, { provide: GenerationApi, useValue: api }],
@@ -55,6 +57,30 @@ describe('WorkspaceStore', () => {
     await vi.waitFor(() => expect(store.busy()).toBe(false));
     return store;
   }
+  it('clears records and selection while retaining engine settings', async () => {
+    const store = await initialized(); const settings = store.settings();
+    const result = await store.clearWorkspace();
+    expect(api.clearWorkspace).toHaveBeenCalledTimes(1);
+    expect(result?.remainingImageFiles).toBe(0);
+    expect(store.plans()).toEqual([]); expect(store.jobs()).toEqual([]);
+    expect(store.selectedPlan()).toBeNull(); expect(store.settings()).toEqual(settings);
+  });
+  it('ignores a stale SSE refresh that finishes after clearing', async () => {
+    const store = await initialized();
+    let resolve!: (jobs: Job[]) => void;
+    api.jobs.mockReturnValueOnce(new Promise<Job[]>(done => resolve = done));
+    events.next(true);
+    await store.clearWorkspace();
+    resolve([{ id: 'stale-job', planId: plan.id, status: 'Completed', tasks: [], mode: 'Finite', maxImages: 1, budgetUsd: null, estimatedCostPerImageUsd: 0, estimatedExposureUsd: 0, stopReason: null }]);
+    await new Promise(done => setTimeout(done, 0));
+    expect(store.jobs()).toEqual([]); expect(store.plans()).toEqual([]);
+  });
+  it('retains workspace records when clearing is rejected', async () => {
+    const store = await initialized();
+    api.clearWorkspace.mockRejectedValue(new HttpErrorResponse({ status: 409, error: { error: 'Requests still running' } }));
+    expect(await store.clearWorkspace()).toBeNull();
+    expect(store.plans()).toEqual([plan]); expect(store.error()).toBe('Requests still running');
+  });
   it('loads state and selects a saved plan on initialization', async () => {
     const store = await initialized();
     expect(store.selectedPlan()?.id).toBe(plan.id);

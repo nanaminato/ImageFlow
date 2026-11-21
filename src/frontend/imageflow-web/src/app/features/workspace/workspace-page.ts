@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { EngineSettingsDialog } from './components/engine-settings/engine-settings-dialog';
+import { ClearWorkspaceDialog } from './components/clear-workspace/clear-workspace-dialog';
 import { WorkspaceStore } from './data-access/workspace.store';
 import { WorkspaceViewState } from './data-access/workspace-view-state';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -60,6 +61,14 @@ export class WorkspacePage {
       injector: this.injector,
       panelClass: 'settings-dialog-panel',
       autoFocus: 'first-heading',
+    });
+  }
+  openClearWorkspace(): void {
+    this.dialog.open(ClearWorkspaceDialog, {
+      width: '560px',
+      maxWidth: 'calc(100vw - 2rem)',
+      injector: this.injector,
+      autoFocus: 'button[mat-dialog-close]',
     });
   }
 }

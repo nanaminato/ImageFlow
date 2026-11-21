@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Observable } from 'rxjs';
 import {
   GenerationTask,
+  WorkspaceClearResult,
   ReviewInput,
   RetryInput,
   EngineSettings,
@@ -27,6 +28,9 @@ export class GenerationApi {
   }
   jobs() {
     return firstValueFrom(this.http.get<Job[]>(`${this.base}/jobs`));
+  }
+  clearWorkspace() {
+    return firstValueFrom(this.http.post<WorkspaceClearResult>(`${this.base}/workspace/clear`, { confirmed: true }));
   }
   plan(input: PlanInput) {
     return firstValueFrom(this.http.post<Plan>(`${this.base}/plans`, input));

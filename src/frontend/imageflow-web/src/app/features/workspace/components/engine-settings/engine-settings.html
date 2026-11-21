@@ -1,11 +1,4 @@
 <form #form="ngForm" class="engine-settings-form" (ngSubmit)="submit()">
-  @if (settings(); as config) {
-    <p class="hint">
-      {{ 'Image model' | t }}: {{ config.imageModel }} · {{ config.imageSize }} ·
-      {{ 'Quality' | t }}: {{ config.imageQuality }} · {{ 'Complexity' | t }}:
-      {{ config.imageComplexity }} · {{ config.outputFormat }}
-    </p>
-  }
   @if (settings()?.estimateConfirmed === false) {
     <p class="error" role="alert">
       {{
@@ -14,6 +7,53 @@
       }}
     </p>
   }
+  <div class="settings-fields generation-fields">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="settings-wide">
+      <mat-label>{{ 'Image model' | t }}</mat-label>
+      <mat-select name="model" [(ngModel)]="model" (ngModelChange)="changeModel()" required>
+        @for (c of settings()?.imageCapabilities ?? []; track c.model) {
+          <mat-option [value]="c.model">{{ c.model }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="settings-wide">
+      <mat-label>{{ 'Resolution and aspect ratio' | t }}</mat-label>
+      <mat-select name="size" [(ngModel)]="size" required>
+        @for (s of sizes; track s) { <mat-option [value]="s">{{ s }} · {{ ratio(s) }}</mat-option> }
+        @if (capability?.customDimensions) { <mat-option value="custom">{{ 'Custom dimensions' | t }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    @if (size === 'custom') {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ 'Width (px)' | t }}</mat-label>
+        <input matInput type="number" name="width" [(ngModel)]="width" min="16" max="3840" step="16" required />
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ 'Height (px)' | t }}</mat-label>
+        <input matInput type="number" name="height" [(ngModel)]="height" min="16" max="3840" step="16" required />
+      </mat-form-field>
+    }
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ 'Quality' | t }}</mat-label>
+      <mat-select name="quality" [(ngModel)]="quality" required>
+        @for (q of capability?.qualities ?? []; track q) { <mat-option [value]="q">{{ q | t }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ 'Complexity' | t }}</mat-label>
+      <mat-select name="complexity" [(ngModel)]="complexity" [disabled]="capability?.complexities?.length === 1" required>
+        @for (c of capability?.complexities ?? []; track c) { <mat-option [value]="c">{{ c | t }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+  </div>
+  <p class="hint">{{ 'Generation settings apply to new jobs. Existing jobs keep their saved configuration.' | t }} {{ settings()?.outputFormat }}</p>
+  @if (settings()?.provider === 'OpenAICompatible') {
+    <p class="hint">{{ 'Gateway options are configured capabilities; model listing does not verify generation support.' | t }}</p>
+  }
+  @if (capability?.customDimensions) {
+    <p class="hint">{{ 'Dimensions: multiples of 16, up to 3840 per edge; 655,360–8,294,400 pixels; ratio 1:3–3:1. Above 2560×1440 is experimental for 2.5.' | t }}</p>
+  }
+  @if (!dimensionsValid) { <p class="error" role="alert">{{ 'Invalid image dimensions.' | t }}</p> }
   <div class="settings-fields">
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>{{ 'Concurrent image requests' | t }}</mat-label>
@@ -54,7 +94,7 @@
     </p>
   </div>
   <div class="settings-actions">
-    <button mat-flat-button [disabled]="busy() || !settings() || form.invalid">
+    <button mat-flat-button [disabled]="busy() || !settings() || form.invalid || !dimensionsValid">
       {{ 'Save settings' | t }}
     </button>
   </div>

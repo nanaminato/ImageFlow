@@ -20,6 +20,7 @@ builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<TaskReviewService>();
 builder.Services.AddScoped<IRuntimeSettingsRepository, RuntimeSettingsRepository>();
 builder.Services.AddScoped<RuntimeSettingsService>();
+builder.Services.AddScoped<IWorkspaceMaintenance, WorkspaceMaintenance>();
 builder.Services.AddDbContext<QueueDb>((s, x) => x.UseSqlite($"Data Source={Path.Combine(s.GetRequiredService<EngineOptions>().DataDirectory, "imageflow.db")}"));
 builder.Services.AddSingleton<MockProvider>();
 builder.Services.AddHttpClient<OpenAiProvider>(c => c.Timeout = TimeSpan.FromMinutes(10))
@@ -51,6 +52,7 @@ if (hasWebRoot)
 app.MapGet("/health", async (QueueDb db) => await db.Database.CanConnectAsync() ? Results.Ok(new { status = "healthy" }) : Results.StatusCode(503));
 var api = app.MapGroup("/api/v1");
 api.MapSettingsEndpoints();
+api.MapWorkspaceEndpoints();
 
 api.MapPlanEndpoints();
 api.MapJobEndpoints();

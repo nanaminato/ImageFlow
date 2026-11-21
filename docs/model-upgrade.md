@@ -11,7 +11,7 @@ Official defaults are `gpt-6-luna` for Responses structured prompt planning and 
 
 `EngineOptions` binds configuration; `ModelCatalog` declares supported adapter capabilities. Add new models deliberately with contract tests. There is no universal model-option assumption, discovery-based trust or paid startup probe. Official output is intentionally restricted to PNG, with explicit size/quality/complexity. SVG/GIF, edits, streaming partial images and URL downloads are outside this adapter.
 
-Compatible gateways require an explicit profile ID, HTTPS endpoint, separate credential environment-variable reference and declared model/size/quality/complexity/format sets. This declaration is the operator's assertion of a verified contract, not a remote capability check. Official retirement dates do not automatically apply to independent gateways. A gateway that omits complexity or does not support the declared contract needs a separate adapter rather than a silent parameter fallback.
+Compatible gateways require an explicit profile ID, HTTPS endpoint, separate credential environment-variable reference and declared model/size/quality/complexity/format sets. This declaration is the operator's assertion of a verified contract, not a remote capability check. Official retirement dates do not automatically apply to independent gateways. For 2.5, explicitly declare complexity `none`; the adapter then omits that unsupported parameter. 2.6 retains its low/medium/high complexity settings. Other contract differences require a separate adapter.
 
 Old local configuration is not rewritten or accepted through aliases. The ignored `appsettings.Local.json` can override repository defaults: review it before restarting. Update official model IDs, or explicitly declare a verified gateway profile. Changing the official defaults does not prove that the currently configured third-party gateway supports Luna or 2.6. Credentials remain environment/secure-local configuration only.
 
@@ -36,3 +36,9 @@ This preserves historical evidence without retaining an old execution compatibil
 Run `dotnet test -c Release --no-restore`, frontend unit tests/build, and the Mock browser suite. Backend official-provider tests install an in-memory HTTP handler for every request; no sockets or paid service calls are used. Tests cover structured planning, immutable snapshots, valid PNG decompression/write/download, request IDs/raw usage, missing/corrupt output, no blind retry, profile/destination mismatch, changed defaults, estimate reconfirmation and migration/recovery.
 
 PNG runtime validation checks the file envelope and CRCs, not full raster decoding. Tests decompress a known-valid real PNG fixture. Mock mode still produces labeled SVG previews. Mock tests cannot establish account permissions, gateway support, latency, image quality or actual billing. `scripts/test-provider.py --allow-paid` is a separate opt-in tool and was not run for this upgrade.
+
+## Editable generation defaults
+
+`EditableGenerationSettings` adds nullable image-selection columns to SQLite runtime settings. Existing rows retain their startup defaults until settings are saved. Saved model/size/quality/complexity then take precedence over startup image defaults, survive restart, and are snapshotted into new jobs. They do not mutate old jobs. Allowed capabilities and endpoint/credential references remain server-controlled. Settings exposes only public image capabilities, never credentials.
+
+The catalog includes 2.5 Flare/Sunburst with the documented dimension and quality constraints, and complexity `none` (omitted on the wire). Source: [OpenAI image generation guide](https://developers.openai.com/api/docs/guides/image-generation), reviewed 2026-11-21.

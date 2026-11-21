@@ -115,7 +115,8 @@
 }
 .header-tools {
   gap: 8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .language-select {
   min-height: 34px;
