@@ -27,7 +27,7 @@ export class EngineSettings {
   complexity = '';
   width = 1024;
   height = 1024;
-  readonly presets = ['1024x1024', '1536x1024', '1024x1536', '1536x864', '864x1536', '2048x2048', '2560x1440', '1440x2560'];
+  readonly presets = ['1024x1024', '1536x1024', '1024x1536', '1536x864', '864x1536', '2048x2048', '2560x1440', '1440x2560', '3840x2160', '2160x3840'];
   get capability() { return this.settings()?.imageCapabilities?.find(c => c.model === this.model); }
   get sizes() { return this.capability?.customDimensions ? this.presets : this.capability?.sizes ?? []; }
   get effectiveSize() { return this.size === 'custom' ? `${this.width}x${this.height}` : this.size; }
@@ -36,6 +36,11 @@ export class EngineSettings {
     const [w, h] = this.effectiveSize.split('x').map(Number);
     return Number.isInteger(w) && Number.isInteger(h) && w > 0 && h > 0 && w % 16 === 0 && h % 16 === 0 &&
       w <= 3840 && h <= 3840 && w / h <= 3 && h / w <= 3 && w * h >= 655360 && w * h <= 8294400;
+  }
+  is4k(size: string): boolean { return size === '3840x2160' || size === '2160x3840'; }
+  isExperimental(size: string): boolean {
+    const [w, h] = size.split('x').map(Number);
+    return this.model.startsWith('gpt-image-2.5-') && w * h > 2560 * 1440;
   }
   ratio(size: string) {
     const [w, h] = size.split('x').map(Number);

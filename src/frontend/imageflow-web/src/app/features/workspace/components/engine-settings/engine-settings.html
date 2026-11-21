@@ -19,7 +19,9 @@
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="settings-wide">
       <mat-label>{{ 'Resolution and aspect ratio' | t }}</mat-label>
       <mat-select name="size" [(ngModel)]="size" required>
-        @for (s of sizes; track s) { <mat-option [value]="s">{{ s }} · {{ ratio(s) }}</mat-option> }
+        @for (s of sizes; track s) {
+          <mat-option [value]="s">@if (is4k(s)) {4K · }{{ s }} · {{ ratio(s) }}@if (isExperimental(s)) { · {{ 'Experimental' | t }}}</mat-option>
+        }
         @if (capability?.customDimensions) { <mat-option value="custom">{{ 'Custom dimensions' | t }}</mat-option> }
       </mat-select>
     </mat-form-field>

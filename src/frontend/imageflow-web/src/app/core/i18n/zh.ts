@@ -1,4 +1,5 @@
 export const zh: Record<string, string> = {
+  'Experimental': '实验性',
   'Concurrency limit': '并发上限',
   'Generating now': '当前生成',
   'Running image requests, updated from job status.': '正在进行的图像请求数，随任务状态更新。',

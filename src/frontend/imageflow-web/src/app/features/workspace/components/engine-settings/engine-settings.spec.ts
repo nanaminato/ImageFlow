@@ -39,6 +39,18 @@ describe('image generation settings', () => {
     component.width = 1920; component.height = 1088; component.submit();
     expect(saved[0].imageSize).toBe('1920x1088');
   });
+  it.each(['3840x2160', '2160x3840'])('allows selecting and saving experimental 2.5 4K preset %s', async size => {
+    const component = (await setup()).componentInstance;
+    component.model = 'gpt-image-2.5-flare'; component.changeModel(); component.size = size;
+    expect(component.sizes).toContain(size); expect(component.dimensionsValid).toBe(true);
+    expect(component.isExperimental(size)).toBe(true);
+    let saved: SettingsInput | undefined; component.save.subscribe(value => saved = value); component.submit();
+    expect(saved?.imageSize).toBe(size);
+    expect(component.isExperimental('2048x2048')).toBe(true);
+    expect(component.isExperimental('2560x1440')).toBe(false);
+    component.model = 'gpt-image-2.6-flare';
+    expect(component.isExperimental(size)).toBe(false);
+  });
   it('limits presets and custom dimensions to the configured gateway capabilities', async () => {
     const fixture = await setup();
     fixture.componentRef.setInput('settings', { ...config, revision: 2, imageCapabilities: config.imageCapabilities!.map(c => ({ ...c, customDimensions: false })) });
