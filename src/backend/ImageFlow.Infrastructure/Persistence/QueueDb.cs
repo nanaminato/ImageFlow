@@ -8,8 +8,10 @@ public class QueueDb(DbContextOptions<QueueDb> options) : DbContext(options)
     public DbSet<Attempt> Attempts => Set<Attempt>();
     public DbSet<TaskReview> TaskReviews => Set<TaskReview>();
     public DbSet<RuntimeSettings> RuntimeSettings => Set<RuntimeSettings>();
+    public DbSet<PendingImageDeletion> PendingImageDeletions => Set<PendingImageDeletion>();
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<PendingImageDeletion>().HasKey(x => x.FileName);
         b.Entity<Plan>().HasMany(x => x.Prompts).WithOne().HasForeignKey(x => x.PlanId);
         b.Entity<Job>().HasIndex(x => x.PlanId).IsUnique();
         b.Entity<Job>().HasMany(x => x.Tasks).WithOne().HasForeignKey(x => x.JobId);

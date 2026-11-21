@@ -191,6 +191,16 @@ namespace ImageFlow.Api.Migrations
                     b.ToTable("Jobs");
                 });
 
+            modelBuilder.Entity("ImageFlow.PendingImageDeletion", b =>
+                {
+                    b.Property<string>("FileName")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("FileName");
+
+                    b.ToTable("PendingImageDeletions");
+                });
+
             modelBuilder.Entity("ImageFlow.Plan", b =>
                 {
                     b.Property<Guid>("Id")

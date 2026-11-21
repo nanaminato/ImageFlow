@@ -1183,3 +1183,17 @@ a {
 
 .clear-workspace-button { color: #a12a20 !important; }
 .clear-confirm-button:not(:disabled) { background: #b3261e !important; color: white !important; }
+
+.managed-plan-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; }
+.item-delete-button { color: #a12a20 !important; background: none; border: 0; padding: 8px; cursor: pointer; font: inherit; }
+.item-delete-button:disabled { opacity: .45; cursor: default; }
+.collection-download { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.delete-item-label { overflow-wrap: anywhere; max-height: 100px; overflow: auto; }
+
+.managed-plan-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+.item-checkbox, .selection-label input { width: 18px; height: 18px; accent-color: #0f6b58; flex-shrink: 0; }
+.selection-label { display: inline-flex; gap: 7px; align-items: center; font-size: 12px; cursor: pointer; }
+.bulk-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 10px 0; font-size: 12px; }
+.bulk-actions .hint { flex-basis: 100%; margin: 0; }
+.image-selection { padding: 8px; }
+.batch-confirm-count { font-weight: 700; }

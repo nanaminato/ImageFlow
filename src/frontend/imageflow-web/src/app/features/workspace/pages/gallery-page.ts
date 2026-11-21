@@ -6,11 +6,14 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { ImageGallery } from '../components/image-gallery/image-gallery';
 import { WorkspaceStore } from '../data-access/workspace.store';
 import { WorkspaceViewState } from '../data-access/workspace-view-state';
+import { ItemActions } from '../data-access/item-actions';
+import { ItemSelection } from '../data-access/item-selection';
+import { BulkActions } from '../components/bulk-actions/bulk-actions';
 
 @Component({
   selector: 'app-gallery-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, FormsModule, RouterLink, ImageGallery],
+  imports: [TranslatePipe, FormsModule, RouterLink, ImageGallery, BulkActions],
   template: `
     <section class="hero page-heading">
       <div>
@@ -22,6 +25,16 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
       </div>
       <a class="page-action" routerLink="/create">+ {{ 'Create collection' | t }}</a>
     </section>
+    <div class="collection-download">
+      @if (selectedCollection(); as job) {
+        @if (job.tasks.some(hasImage)) {
+          <a class="page-action" [href]="'/api/v1/jobs/' + job.id + '/images.zip'" download>{{ 'Download collection ZIP' | t }}</a>
+          <span class="hint">{{ 'Includes all currently saved images in this collection, regardless of search filters.' | t }}</span>
+        }
+      } @else {
+        <span class="hint">{{ 'Select a collection to download all its images.' | t }}</span>
+      }
+    </div>
     <section class="panel management-filters" [attr.aria-label]="'Collection filters' | t">
       <label class="filter-field"
         >{{ 'Search images' | t }}<input type="search" [(ngModel)]="view.imageSearch"
@@ -46,8 +59,11 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
         >{{ filteredImages().length }} / {{ store.images().length }} {{ 'images' | t }}</span
       >
     </section>
+    <app-bulk-actions [visibleIds]="visibleIds()" [selectedIds]="selection.ids()" [selectedCount]="selectedImages().length"
+      [busy]="store.busy()" (toggleAll)="selection.toggleAll($event)" (clear)="selection.clear()" (remove)="items.deleteImages(selectedImages())" />
     @if (filteredImages().length || !store.images().length) {
-      <app-image-gallery [images]="filteredImages()" />
+      <app-image-gallery [images]="filteredImages()" [busy]="store.busy()" (remove)="items.deleteImage($event)"
+        [selectedIds]="selection.ids()" (toggleSelection)="selection.toggle($event)" />
     } @else {
       <div class="panel empty-state">
         <p>{{ 'No matching images.' | t }}</p>
@@ -58,10 +74,16 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
 export class GalleryPage {
   readonly store = inject(WorkspaceStore);
   readonly view = inject(WorkspaceViewState);
+  readonly items = inject(ItemActions);
+  readonly selection = new ItemSelection();
+  readonly selectedImages = computed(() => this.store.images().filter(t => this.selection.ids().has(t.id)));
+  readonly visibleIds = computed(() => this.filteredImages().map(t => t.id));
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.queryParamMap);
   readonly jobFilter = computed(() => this.params()?.get('job') ?? '');
+  readonly selectedCollection = computed(() => this.store.jobs().find(j => j.id === this.jobFilter()));
+  readonly hasImage = (task: { imagePath: string | null }) => !!task.imagePath;
   readonly planNames = computed(() =>
     Object.fromEntries(this.store.plans().map((p) => [p.id, p.theme])),
   );

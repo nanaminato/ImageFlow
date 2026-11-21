@@ -3,6 +3,11 @@
     <div class="gallery">
       @for (task of images(); track task.id) {
         <figure>
+          <label class="selection-label image-selection">
+            <input type="checkbox" [checked]="selectedIds().has(task.id)" [disabled]="busy()"
+              [attr.aria-label]="('Select image' | t) + ': ' + task.promptText" (change)="toggleSelection.emit(task.id)" />
+            {{ 'Select image' | t }}
+          </label>
           <button
             type="button"
             class="image-link"
@@ -15,6 +20,8 @@
           <figcaption>
             <p>{{ task.promptText }}</p>
             <a [href]="'/api/v1/images/' + task.id" download>{{ 'Download' | t }}</a>
+            <button type="button" class="item-delete-button" [disabled]="busy()" (click)="remove.emit(task)"
+              [attr.aria-label]="('Delete image' | t) + ': ' + task.promptText">{{ 'Delete image' | t }}</button>
           </figcaption>
         </figure>
       }

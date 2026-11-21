@@ -6,11 +6,14 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { JobQueue } from '../components/job-queue/job-queue';
 import { WorkspaceStore } from '../data-access/workspace.store';
 import { WorkspaceViewState } from '../data-access/workspace-view-state';
+import { ItemActions } from '../data-access/item-actions';
+import { ItemSelection } from '../data-access/item-selection';
+import { BulkActions } from '../components/bulk-actions/bulk-actions';
 
 @Component({
   selector: 'app-queue-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, FormsModule, RouterLink, JobQueue],
+  imports: [TranslatePipe, FormsModule, RouterLink, JobQueue, BulkActions],
   template: `
     <section class="hero page-heading">
       <div>
@@ -59,6 +62,8 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
         {{ 'Reset filters' | t }}
       </button>
     </section>
+    <app-bulk-actions [visibleIds]="visibleIds()" [selectedIds]="selection.ids()" [selectedCount]="selectedJobs().length"
+        [busy]="store.busy()" (toggleAll)="selection.toggleAll($event)" (clear)="selection.clear()" (remove)="items.deleteJobs(selectedJobs())" />
     @if (filteredJobs().length || !store.jobs().length) {
       <app-job-queue
         [jobs]="filteredJobs()"
@@ -67,6 +72,8 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
         (control)="store.controlJob($event.job, $event.action)"
         (review)="store.reviewTask($event.id, $event.input)"
         (retry)="store.retryTask($event.id, $event.input)"
+        (remove)="items.deleteJob($event)"
+        [selectedIds]="selection.ids()" (toggleSelection)="selection.toggle($event)"
       />
     } @else {
       <div class="panel empty-state">
@@ -78,6 +85,10 @@ import { WorkspaceViewState } from '../data-access/workspace-view-state';
 export class QueuePage {
   readonly store = inject(WorkspaceStore);
   readonly view = inject(WorkspaceViewState);
+  readonly items = inject(ItemActions);
+  readonly selection = new ItemSelection();
+  readonly selectedJobs = computed(() => this.store.jobs().filter(j => this.selection.ids().has(j.id)));
+  readonly visibleIds = computed(() => this.filteredJobs().map(j => j.id));
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.queryParamMap);

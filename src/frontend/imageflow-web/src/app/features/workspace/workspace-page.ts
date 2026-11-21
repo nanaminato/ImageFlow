@@ -10,12 +10,13 @@ import { EngineSettingsDialog } from './components/engine-settings/engine-settin
 import { ClearWorkspaceDialog } from './components/clear-workspace/clear-workspace-dialog';
 import { WorkspaceStore } from './data-access/workspace.store';
 import { WorkspaceViewState } from './data-access/workspace-view-state';
+import { ItemActions } from './data-access/item-actions';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-workspace-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [WorkspaceStore, WorkspaceViewState],
+  providers: [WorkspaceStore, WorkspaceViewState, ItemActions],
   imports: [
     TranslatePipe,
     MatButtonModule,
@@ -30,6 +31,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 export class WorkspacePage {
   readonly i18n = inject(LanguageService);
   readonly store = inject(WorkspaceStore);
+  readonly items = inject(ItemActions);
   private readonly router = inject(Router);
   private readonly url = toSignal(
     this.router.events.pipe(

@@ -194,6 +194,11 @@ All application endpoints use `/api/v1`:
 | POST | `/tasks/{id}/reviews` | Record `{attemptId,resolution,evidence,confirmed:true}` without sending a request |
 | POST | `/tasks/{id}/retry` | Authorize `{attemptId,confirmed:true}` after a qualifying review; job stays paused |
 | GET | `/usage` | Image attempt history and raw measured usage |
+| POST | `/plans/bulk-delete`, `/jobs/bulk-delete`, `/images/bulk-delete` | Confirmed, atomic batch deletion (`{"ids":["..."],"confirmed":true}`) |
+| DELETE | `/plans/{id}?confirmed=true` | Delete one plan and its jobs/images/history |
+| DELETE | `/jobs/{id}?confirmed=true` | Delete one job and its images/history; keep its plan |
+| DELETE | `/images/{taskId}?confirmed=true` | Remove one image; retain task/usage/history |
+| GET | `/jobs/{id}/images.zip` | Download all currently saved images of one collection |
 | POST | `/workspace/clear` | Permanently clear workspace data (`{"confirmed":true}`); retain engine settings |
 | GET / PUT | `/settings` | Read effective configuration / persist `maxConcurrency` and `estimatedCostPerImageUsd` |
 | GET | `/events` | SSE `jobs` snapshot each second; reconnect gets current state |
@@ -269,3 +274,27 @@ Use **Clear workspace** in the header. The confirmation dialog lists current pla
 The server requires `POST /api/v1/workspace/clear` with `{"confirmed":true}`. It rejects in-flight planning or image requests with 409 under the shared queue mutation gate; pause jobs and wait for outstanding requests to settle first. The endpoint never sends provider requests or retries work. Pending/paused/terminal work, including Unknown history, is deleted only after this explicit confirmation.
 
 SQLite records are deleted in one transaction. Filesystem deletion runs after that commit, only on immediate files in the configured `data/images` directory, including orphan temporary outputs. It never follows database image paths or recursively deletes directories, and rejects linked/nested image storage before changing records. SQLite and filesystem deletion are not one atomic transaction. If files are locked, the response reports `remainingImageFiles` and the dialog allows cleanup to be retried after releasing the files. A process interruption after the commit can likewise leave unreferenced files; another confirmed clear cleans them up. Other data-directory files are preserved. Browser tests intercept the clear endpoint; automated tests use isolated Mock databases and never clear the operator's live workspace.
+
+### Delete individual items and download a collection
+
+- **Prompt management**: each plan has a **Delete** button. Confirmation names the plan and states that its jobs, outputs, usage and review history are also deleted. Other plans and engine settings remain.
+- **Queue management**: **Delete job** removes only that job, its image files, attempts and reviews. The prompt plan remains. Queueing the retained plan again is an explicit new generation operation that may incur charges.
+- **Collection library**: **Delete image** removes only the saved output. The completed task, immutable prompt, measured usage, estimated exposure and reviews remain. Completed counts and quantity/budget reservations are unchanged; no image is automatically regenerated.
+
+Each action requires a confirmation checkbox and sends `DELETE ...?confirmed=true`; omitted/false confirmation returns 400. Unknown IDs return 404. Deleting a plan/job is rejected with 409 while any of its tasks/attempts are Running. Deleting a running image is likewise rejected. Other collections can continue generating. Deletion and worker dispatch share the same mutation gate. A plan deletion cascades only to that plan's job; a job deletion never deletes its plan. UI lists, current selection and URL references update without resetting unrelated drafts or filters. Other open clients reconcile removed plans on the next SSE refresh.
+
+Image filenames queued for removal are committed to SQLite together with record deletion. Files are then removed only from ordinary, immediate PNG/SVG files in the configured image directory. Outside/linked/shared paths reject deletion before changing records. Locked files remain in `PendingImageDeletions`; the image-cleanup worker retries on startup and every 30 seconds, without making provider calls. A notice explains deferred cleanup. Metadata deletion and filesystem deletion are not atomic across the two stores; restart preserves pending cleanup work. Back up needed images/history before confirming deletion.
+
+For a complete collection download, select a **Collection** in the library and click **Download collection ZIP**. The queue also offers this link on each job with images. The archive includes all outputs saved for that job at the time preparation starts, regardless of the UI search filter, and excludes deleted images and other jobs. Running jobs can be downloaded; still-in-flight outputs are not included in that snapshot. Entry names use an index and task ID, with the original PNG/SVG bytes and extension. No planning/generation API is called. Empty/missing collections return 404; missing/unreadable files return 409 instead of a misleading partial archive. ZIP preparation uses disk-backed streaming and a temporary archive deleted when its download stream closes.
+
+Tests cover scoped cascades, confirmation and in-flight guards, immutable image-task usage/budgets, unsafe paths, durable locked-file cleanup after restart, exact ZIP membership and empty/missing output errors. Browser fixtures never send deletion commands to the live workspace; ZIP bytes are validated in isolated backend integration tests.
+
+### Multi-select batch deletion
+
+Prompt management, Queue management and Collection library all offer row/image checkboxes, **Select all results**, a selected-count indicator, **Clear selection** and **Delete selected**. Select all affects only the current filtered results. Selections persist while changing filters on that page; if hidden results remain selected, the toolbar says so. Navigation away resets page selection. New SSE results are not selected automatically, and removed records no longer count toward the selection.
+
+The confirmation dialog names the item type, prominently shows the selected count, and shows affected job/image counts and the relevant cascade behavior. It requires a separate confirmation checkbox; Cancel/Escape/backdrop do not send a request. Successful deletion updates all selected items and URL references together while keeping unselected data. Single-item deletion remains available.
+
+Batch endpoints accept `POST /api/v1/{plans|jobs|images}/bulk-delete` with `{"ids":["<guid>","<guid>"],"confirmed":true}`. Each batch allows 1–1000 IDs, rejects empty/invalid IDs, and deduplicates repeated IDs. An unconfirmed or invalid batch returns 400. If any selected item no longer exists, the whole batch returns 404; if any affected request is Running or any image path is unsafe/shared outside the batch, the whole batch returns 409. No selected item is deleted in those cases. All selected metadata changes and durable file-cleanup work commit in one SQLite transaction under the dispatch gate, with the same scoped cascade and retained-usage rules as single-item deletion. Filesystem cleanup is still separate, with durable retry for locked files.
+
+Tests use isolated data and cover all three batch types, duplicate IDs, count/confirmation validation, missing/running-item rejection, transaction rollback across the whole batch, retained image-task usage, filtered selection, deselection, cancel, displayed counts, mobile layout and server rejection. No live workspace data is deleted during tests.

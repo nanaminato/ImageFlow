@@ -21,6 +21,8 @@ builder.Services.AddScoped<TaskReviewService>();
 builder.Services.AddScoped<IRuntimeSettingsRepository, RuntimeSettingsRepository>();
 builder.Services.AddScoped<RuntimeSettingsService>();
 builder.Services.AddScoped<IWorkspaceMaintenance, WorkspaceMaintenance>();
+builder.Services.AddScoped<IItemMaintenance, ItemMaintenance>();
+builder.Services.AddSingleton<ImageStorage>();
 builder.Services.AddDbContext<QueueDb>((s, x) => x.UseSqlite($"Data Source={Path.Combine(s.GetRequiredService<EngineOptions>().DataDirectory, "imageflow.db")}"));
 builder.Services.AddSingleton<MockProvider>();
 builder.Services.AddHttpClient<OpenAiProvider>(c => c.Timeout = TimeSpan.FromMinutes(10))
@@ -28,6 +30,7 @@ builder.Services.AddHttpClient<OpenAiProvider>(c => c.Timeout = TimeSpan.FromMin
 builder.Services.AddSingleton<IPromptPlanningProvider>(s => s.GetRequiredService<EngineOptions>().Provider == "Mock" ? s.GetRequiredService<MockProvider>() : s.GetRequiredService<OpenAiProvider>());
 builder.Services.AddSingleton<IImageGenerationProvider>(s => s.GetRequiredService<EngineOptions>().Provider == "Mock" ? s.GetRequiredService<MockProvider>() : s.GetRequiredService<OpenAiProvider>());
 builder.Services.AddHostedService<QueueWorker>();
+builder.Services.AddHostedService<ImageCleanupWorker>();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddCors(x => x.AddDefaultPolicy(p => p.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
@@ -53,6 +56,7 @@ app.MapGet("/health", async (QueueDb db) => await db.Database.CanConnectAsync() 
 var api = app.MapGroup("/api/v1");
 api.MapSettingsEndpoints();
 api.MapWorkspaceEndpoints();
+api.MapItemEndpoints();
 
 api.MapPlanEndpoints();
 api.MapJobEndpoints();

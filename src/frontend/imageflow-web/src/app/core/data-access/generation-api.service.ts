@@ -4,6 +4,8 @@ import { firstValueFrom, Observable } from 'rxjs';
 import {
   GenerationTask,
   WorkspaceClearResult,
+  ItemDeletionResult,
+  DeleteTarget,
   ReviewInput,
   RetryInput,
   EngineSettings,
@@ -31,6 +33,11 @@ export class GenerationApi {
   }
   clearWorkspace() {
     return firstValueFrom(this.http.post<WorkspaceClearResult>(`${this.base}/workspace/clear`, { confirmed: true }));
+  }
+  deleteItem(target: DeleteTarget) {
+    const resource = { plan: 'plans', job: 'jobs', image: 'images' }[target.kind];
+    if (target.ids) return firstValueFrom(this.http.post<ItemDeletionResult>(`${this.base}/${resource}/bulk-delete`, { ids: target.ids, confirmed: true }));
+    return firstValueFrom(this.http.delete<ItemDeletionResult>(`${this.base}/${resource}/${target.id}?confirmed=true`));
   }
   plan(input: PlanInput) {
     return firstValueFrom(this.http.post<Plan>(`${this.base}/plans`, input));

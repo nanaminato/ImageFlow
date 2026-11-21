@@ -22,6 +22,8 @@ import {
   PlanInput,
   Prompt,
   WorkspaceClearResult,
+  ItemDeletionResult,
+  DeleteTarget,
 } from '../../../core/models/generation.models';
 
 interface WorkspaceState {
@@ -89,17 +91,40 @@ export const WorkspaceStore = signalStore(
       refreshing = true;
       const version = dataVersion;
       try {
-        const [jobs, settings] = await Promise.all([api.jobs(), api.settings()]);
-        if (!destroyed && version === dataVersion)
+        const [jobs, settings, savedPlans] = await Promise.all([api.jobs(), api.settings(), api.plans()]);
+        if (!destroyed && version === dataVersion) {
+          const plans = savedPlans.map(p => store.plans().find(local => local.id === p.id) ?? p);
           patchState(store, {
-            jobs,
+            jobs, plans,
+            selectedPlanId: plans.some(p => p.id === store.selectedPlanId()) ? store.selectedPlanId() : plans[0]?.id ?? null,
             ...(settings.revision > (store.settings()?.revision ?? -1) ? { settings } : {}),
           });
+        }
       } finally {
         refreshing = false;
       }
     };
     return {
+      async deleteItem(target: DeleteTarget): Promise<ItemDeletionResult | null> {
+        let result: ItemDeletionResult | null = null;
+        await perform(async () => {
+          dataVersion++;
+          result = await api.deleteItem(target);
+          dataVersion++;
+          if (destroyed) return;
+          const ids = new Set(target.ids ?? [target.id]);
+          // Apply the confirmed deletion locally even if a later refresh fails.
+          const removedJobs = new Set(store.jobs().filter(j => target.kind === 'plan' ? ids.has(j.planId) : target.kind === 'job' && ids.has(j.id)).map(j => j.id));
+          const plans = target.kind === 'plan' ? store.plans().filter(p => !ids.has(p.id)) : store.plans();
+          patchState(store, {
+            plans,
+            selectedPlanId: plans.some(p => p.id === store.selectedPlanId()) ? store.selectedPlanId() : plans[0]?.id ?? null,
+            jobs: store.jobs().filter(j => !removedJobs.has(j.id)).map(j => target.kind === 'image'
+              ? { ...j, tasks: j.tasks.map(t => ids.has(t.id) ? { ...t, imagePath: null } : t) } : j),
+          });
+        });
+        return result;
+      },
       async clearWorkspace(): Promise<WorkspaceClearResult | null> {
         let result: WorkspaceClearResult | null = null;
         await perform(async () => {

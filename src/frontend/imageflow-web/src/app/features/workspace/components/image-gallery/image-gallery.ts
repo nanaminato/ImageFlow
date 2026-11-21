@@ -1,5 +1,5 @@
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, output } from '@angular/core';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LanguageService } from '../../../../core/i18n/language.service';
@@ -13,6 +13,10 @@ import { GenerationTask } from '../../../../core/models/generation.models';
 })
 export class ImageGallery {
   readonly images = input.required<GenerationTask[]>();
+  readonly busy = input(false);
+  readonly remove = output<GenerationTask>();
+  readonly selectedIds = input<ReadonlySet<string>>(new Set());
+  readonly toggleSelection = output<string>();
   private readonly dialog = inject(MatDialog);
   private readonly language = inject(LanguageService);
   private readonly destroyRef = inject(DestroyRef);

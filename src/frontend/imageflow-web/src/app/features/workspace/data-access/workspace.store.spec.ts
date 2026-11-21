@@ -26,6 +26,7 @@ describe('WorkspaceStore', () => {
     reviewTask: ReturnType<typeof vi.fn>;
     retryTask: ReturnType<typeof vi.fn>;
     clearWorkspace: ReturnType<typeof vi.fn>;
+    deleteItem: ReturnType<typeof vi.fn>;
   };
   beforeEach(() => {
     events = new Subject<boolean>();
@@ -46,6 +47,7 @@ describe('WorkspaceStore', () => {
       events: vi.fn().mockReturnValue(events),
       reviewTask: vi.fn().mockResolvedValue({}),
       retryTask: vi.fn().mockResolvedValue({}),
+      deleteItem: vi.fn().mockResolvedValue({ plans: 1, jobs: 0, images: 0, pendingImageFiles: 0 }),
       clearWorkspace: vi.fn().mockResolvedValue({ plans: 1, jobs: 0, tasks: 0, images: 0, remainingImageFiles: 0 }),
     };
     TestBed.configureTestingModule({
@@ -80,6 +82,49 @@ describe('WorkspaceStore', () => {
     api.clearWorkspace.mockRejectedValue(new HttpErrorResponse({ status: 409, error: { error: 'Requests still running' } }));
     expect(await store.clearWorkspace()).toBeNull();
     expect(store.plans()).toEqual([plan]); expect(store.error()).toBe('Requests still running');
+  });
+  it('deletes only the selected plan and keeps other local drafts', async () => {
+    api.plans.mockResolvedValue([plan, { ...plan, id: 'other-plan' }]);
+    const store = await initialized();
+    const result = await store.deleteItem({ kind: 'plan', id: plan.id, label: plan.theme, jobs: 0, images: 0, running: false });
+    expect(result?.plans).toBe(1); expect(store.plans().map(p => p.id)).toEqual(['other-plan']);
+    expect(store.selectedPlanId()).toBe('other-plan'); expect(store.settings()?.provider).toBe('Mock');
+  });
+  it('removes an image without removing the task or its usage history', async () => {
+    api.jobs.mockResolvedValue([{ id: 'job-1', planId: plan.id, tasks: [{ id: 'image-1', imagePath: 'saved.png', status: 'Completed', attempts: [{ id: 'attempt' }] }] }]);
+    const store = await initialized();
+    await store.deleteItem({ kind: 'image', id: 'image-1', label: 'image', jobs: 0, images: 1, running: false });
+    expect(store.images()).toEqual([]); expect(store.jobs()).toHaveLength(1);
+    expect(store.jobs()[0].tasks[0].attempts).toEqual([{ id: 'attempt' }]);
+  });
+  it('does not remove records on rejected deletion', async () => {
+    const store = await initialized();
+    api.deleteItem.mockRejectedValue(new HttpErrorResponse({ status: 409, error: { error: 'In-flight request' } }));
+    expect(await store.deleteItem({ kind: 'plan', id: plan.id, label: 'plan', jobs: 1, images: 1, running: false })).toBeNull();
+    expect(store.plans()).toEqual([plan]); expect(store.error()).toBe('In-flight request');
+  });
+  it('reflects remote plan deletion while retaining unsaved edits on other plans', async () => {
+    const other = { ...plan, id: 'other-plan' }; api.plans.mockResolvedValue([plan, other]);
+    const store = await initialized(); store.editPrompt('prompt-1', 'unsaved');
+    api.plans.mockResolvedValue([other]); events.next(true);
+    await vi.waitFor(() => expect(store.plans()).toHaveLength(1));
+    expect(store.selectedPlan()?.id).toBe(other.id); expect(store.selectedPlan()?.prompts[0].text).toBe('unsaved');
+  });
+  it('applies a confirmed batch plan deletion to all selected IDs and keeps unselected plans', async () => {
+    api.plans.mockResolvedValue([plan, { ...plan, id: 'plan-2' }, { ...plan, id: 'plan-3' }]);
+    api.jobs.mockResolvedValue([{ id: 'job-1', planId: plan.id, tasks: [] }, { id: 'job-2', planId: 'plan-2', tasks: [] }, { id: 'job-3', planId: 'plan-3', tasks: [] }]);
+    const store = await initialized();
+    await store.deleteItem({ kind: 'plan', id: plan.id, ids: [plan.id, 'plan-2'], label: 'batch', jobs: 2, images: 0, running: false });
+    expect(store.plans().map(p => p.id)).toEqual(['plan-3']);
+    expect(store.jobs().map(j => j.id)).toEqual(['job-3']);
+    expect(store.selectedPlanId()).toBe('plan-3');
+  });
+  it('a rejected batch leaves all selected plans in the local store', async () => {
+    api.plans.mockResolvedValue([plan, { ...plan, id: 'plan-2' }]);
+    const store = await initialized();
+    api.deleteItem.mockRejectedValue(new HttpErrorResponse({ status: 409, error: { error: 'Running item' } }));
+    expect(await store.deleteItem({ kind: 'plan', id: plan.id, ids: [plan.id, 'plan-2'], label: 'batch', jobs: 1, images: 0, running: false })).toBeNull();
+    expect(store.plans()).toHaveLength(2);
   });
   it('loads state and selects a saved plan on initialization', async () => {
     const store = await initialized();

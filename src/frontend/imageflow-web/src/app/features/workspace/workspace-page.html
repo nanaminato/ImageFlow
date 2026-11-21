@@ -133,6 +133,9 @@
       </div>
     </header>
     <main class="app-main" id="workspace-main">
+      @if (items.pendingFiles()) {
+        <p class="hint" role="status">{{ 'Deletion was saved. Some image files are in use; cleanup will retry automatically.' | t }} ({{ items.pendingFiles() }})</p>
+      }
       @if (store.error()) {
         <div class="error" role="alert">{{ store.error() }}</div>
       }

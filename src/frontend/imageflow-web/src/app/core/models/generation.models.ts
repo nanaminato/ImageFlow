@@ -91,6 +91,21 @@ export interface WorkspaceClearResult {
   images: number;
   remainingImageFiles: number;
 }
+export interface ItemDeletionResult {
+  plans: number;
+  jobs: number;
+  images: number;
+  pendingImageFiles: number;
+}
+export interface DeleteTarget {
+  ids?: string[];
+  kind: 'plan' | 'job' | 'image';
+  id: string;
+  label: string;
+  jobs: number;
+  images: number;
+  running: boolean;
+}
 export interface JobOptions {
   mode: 'Finite' | 'Continuous';
   maxImages?: number;

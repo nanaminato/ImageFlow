@@ -7,6 +7,11 @@
   </div>
   @for (job of jobs(); track job.id) {
     <article class="job">
+      <label class="selection-label">
+        <input type="checkbox" [checked]="selectedIds().has(job.id)" [disabled]="busy()"
+          [attr.aria-label]="('Select job' | t) + ': ' + (planNames()[job.planId] || job.id)" (change)="toggleSelection.emit(job.id)" />
+        {{ 'Select job' | t }}
+      </label>
       @if (planNames()[job.planId]) {
         <h3 class="job-name">{{ planNames()[job.planId] }}</h3>
       }
@@ -38,10 +43,12 @@
         <p class="stop-reason">{{ 'Stopped:' | t }} {{ job.stopReason | t }}</p>
       }
       <div class="actions">
+        <button mat-button class="item-delete-button" [disabled]="busy()" (click)="remove.emit(job)">{{ 'Delete job' | t }}</button>
         <a mat-button routerLink="/prompts" [queryParams]="{ plan: job.planId }">{{
           'View prompt plan' | t
         }}</a>
         @if (hasImages(job)) {
+          <a mat-button [href]="'/api/v1/jobs/' + job.id + '/images.zip'" download>{{ 'Download collection ZIP' | t }}</a>
           <a mat-button routerLink="/gallery" [queryParams]="{ job: job.id }">{{
             'View images' | t
           }}</a>

@@ -26,6 +26,9 @@ export class JobQueue {
   readonly control = output<{ job: Job; action: JobAction }>();
   readonly review = output<{ id: string; input: ReviewInput }>();
   readonly retry = output<{ id: string; input: RetryInput }>();
+  readonly remove = output<Job>();
+  readonly selectedIds = input<ReadonlySet<string>>(new Set());
+  readonly toggleSelection = output<string>();
   completed(job: Job) {
     return job.tasks.filter((t) => t.status === 'Completed').length;
   }
