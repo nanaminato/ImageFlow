@@ -60,6 +60,11 @@ export interface EngineSettings {
   imageModel: string;
   estimatedCostPerImageUsd: number;
   revision: number;
+  estimateConfirmed: boolean;
+  imageSize: string;
+  imageQuality: string;
+  imageComplexity: string;
+  outputFormat: string;
 }
 export interface PlanInput {
   theme: string;

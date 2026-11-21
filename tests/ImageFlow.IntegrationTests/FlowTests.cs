@@ -13,6 +13,8 @@ public sealed class AppFactory : WebApplicationFactory<Program>
     public string DataPath { get; } = Path.Combine(Directory.GetCurrentDirectory(), ".cache", "tests", Guid.NewGuid().ToString());
     public bool Worker { get; init; } = true; public IImageGenerationProvider? ImageProvider { get; init; }
     public string? ExistingPath { get; init; }
+    public Dictionary<string, string?> Overrides { get; init; } = new();
+    public HttpMessageHandler? ApiHandler { get; init; }
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?>
@@ -21,8 +23,11 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             ["Engine:Provider"] = "Mock",
             ["Engine:WorkerEnabled"] = Worker.ToString(),
             ["Engine:MaxConcurrency"] = "2"
-        }));
-        builder.ConfigureServices(s => { if (ImageProvider != null) s.AddSingleton(ImageProvider); });
+        }).AddInMemoryCollection(Overrides));
+        builder.ConfigureServices(s => {
+            if (ImageProvider != null) s.AddSingleton(ImageProvider);
+            if (ApiHandler != null) s.AddHttpClient<OpenAiProvider>().ConfigurePrimaryHttpMessageHandler(() => ApiHandler);
+        });
     }
 }
 public class FlowTests
@@ -138,10 +143,10 @@ public class ProbeProvider : IImageGenerationProvider
 {
     int active, calls, max;
     public int Calls => calls; public int MaxObserved => max; public ProviderFailure? Failure { get; init; }
-    public async Task<ImageResult> GenerateAsync(string prompt, CancellationToken ct)
+    public async Task<ImageResult> GenerateAsync(ImageGenerationRequest request, CancellationToken ct)
     {
         Interlocked.Increment(ref calls); var current = Interlocked.Increment(ref active); int old;
         do { old = max; if (old >= current) break; } while (Interlocked.CompareExchange(ref max, current, old) != old);
-        try { await Task.Delay(250, ct); if (Failure != null) throw Failure; return await new MockProvider().GenerateAsync(prompt, ct); } finally { Interlocked.Decrement(ref active); }
+        try { await Task.Delay(250, ct); if (Failure != null) throw Failure; return await new MockProvider().GenerateAsync(request, ct); } finally { Interlocked.Decrement(ref active); }
     }
 }

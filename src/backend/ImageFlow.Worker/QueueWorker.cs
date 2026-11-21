@@ -52,7 +52,7 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
             var now = DateTime.UtcNow;
             foreach (var job in jobs)
             {
-                if (job.Provider != "" && (job.Provider != options.Provider || job.Model != options.ImageModel || job.ImageSize != options.ImageSize))
+                if (!ModelCatalog.CanExecute(options, job))
                 {
                     JobLifecycle.Stop(job, "ProviderConfigurationChanged", true); continue;
                 }
@@ -76,7 +76,7 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
                 if (task == null) continue;
                 task.Status = "Running"; task.Error = null; task.NextAttemptAt = null;
                 job.EstimatedExposureUsd += job.EstimatedCostPerImageUsd;
-                db.Attempts.Add(new Attempt { GenerationTaskId = task.Id, Provider = options.Provider, Model = options.Provider == "Mock" ? "mock-svg" : options.ImageModel, EstimatedCostUsd = job.EstimatedCostPerImageUsd });
+                db.Attempts.Add(new Attempt { GenerationTaskId = task.Id, Provider = job.Provider, Model = job.Model, EstimatedCostUsd = job.EstimatedCostPerImageUsd });
                 // Entity graph, reservation and Running attempt commit together, before the request.
                 await db.SaveChangesAsync(ct);
                 return task.Id;
@@ -95,7 +95,8 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
             var task = await db.Tasks.AsNoTracking().SingleAsync(x => x.Id == id, CancellationToken.None);
             try
             {
-                result = await provider.GenerateAsync(task.PromptText, ct);
+                var job = await db.Jobs.AsNoTracking().SingleAsync(x => x.Id == task.JobId, CancellationToken.None);
+                result = await provider.GenerateAsync(ModelCatalog.Request(job, task.PromptText), ct);
                 path = Path.Combine(options.DataDirectory, "images", $"{id}.{result.Extension}");
                 await File.WriteAllBytesAsync(path + ".tmp", result.Bytes, CancellationToken.None);
                 File.Move(path + ".tmp", path, true);
@@ -107,6 +108,7 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
         {
             using var scope = scopes.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<QueueDb>();
             var task = await db.Tasks.Include(x => x.Attempts).SingleAsync(x => x.Id == id);
+            var job = await db.Jobs.Include(x => x.Tasks).SingleAsync(x => x.Id == task.JobId);
             var attempt = task.Attempts.Single(x => x.Outcome == "Running"); attempt.FinishedAt = DateTime.UtcNow;
             if (error == null)
             {
@@ -117,10 +119,10 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
                 // A local persistence failure following success must also prevent automatic resend.
                 var failure = error as ProviderFailure;
                 attempt.RequestId = failure?.RequestId ?? result?.RequestId;
-                attempt.UsageJson = result?.UsageJson;
+                attempt.UsageJson = failure?.UsageJson ?? result?.UsageJson;
                 task.Error = failure?.Message ?? "Request or output persistence interrupted; outcome unknown.";
                 attempt.Error = task.Error;
-                if (failure?.Retryable == true && task.Attempts.Count < options.MaxAttempts)
+                if (failure?.Retryable == true && task.Attempts.Count < job.AttemptLimit)
                 {
                     task.Status = "RetryWaiting";
                     var backoff = TimeSpan.FromSeconds(Math.Pow(2, task.Attempts.Count));
@@ -131,7 +133,6 @@ public sealed class QueueWorker(IServiceScopeFactory scopes, QueueGate gate, Eng
                 attempt.Outcome = task.Status;
                 log.LogWarning("Task {TaskId} ended with {Status}", id, task.Status);
             }
-            var job = await db.Jobs.Include(x => x.Tasks).SingleAsync(x => x.Id == task.JobId);
             if (error is ProviderFailure { Unknown: false })
             {
                 // Explicit rejection (including 429): this attempt did not generate an image.

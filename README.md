@@ -55,20 +55,25 @@ Angular uses a lazy workspace route, NgRx Signal Store, a typed Angular HttpClie
 
 ### Configuration and real OpenAI calls
 
-ASP.NET Core configuration uses `Engine__...` environment variables. `.env.example` documents keys; the application does **not** automatically load `.env` files. Set variables in the API terminal, or use the ignored `src/backend/ImageFlow.Api/appsettings.Local.json` for local configuration. The API explicitly loads this file; environment variables and command-line arguments override it. `OPENAI_API_KEY` takes precedence over a local `Engine:ApiKey`. Local settings are excluded from build and publish output.
+ASP.NET Core configuration uses `Engine__...` environment variables. `.env.example` documents keys; the application does **not** automatically load `.env` files. Set variables in the API terminal, or use the ignored `src/backend/ImageFlow.Api/appsettings.Local.json` for local configuration. The API explicitly loads this file; environment variables and command-line arguments override it. `Engine:CredentialEnvironmentVariable` identifies the environment secret for this profile (default `OPENAI_API_KEY`); its value takes precedence over secure local `Engine:ApiKey`. Compatible gateways must use a separate explicitly named variable. Local settings are excluded from build and publish output.
 
 ```powershell
 $env:OPENAI_API_KEY = '<your key>'
 $env:Engine__Provider = 'OpenAI'
-$env:Engine__PromptModel = 'gpt-4.1-mini'
-$env:Engine__ImageModel = 'gpt-image-1.5'
+$env:Engine__PromptModel = 'gpt-6-luna'
+$env:Engine__ImageModel = 'gpt-image-2.6-flare'
 $env:Engine__ImageSize = '1024x1024'
+$env:Engine__ImageQuality = 'medium'
+$env:Engine__ImageComplexity = 'high'
+$env:Engine__OutputFormat = 'png'
+$env:Engine__ProviderProfile = 'openai'
+$env:Engine__CredentialEnvironmentVariable = 'OPENAI_API_KEY'
 $env:Engine__MaxConcurrency = '2'
 $env:Engine__MaxAttempts = '3'
 dotnet run --project src/backend/ImageFlow.Api --launch-profile http
 ```
 
-The adapter explicitly validates supported capabilities rather than accepting arbitrary models/options. This version supports structured prompt planning with `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`; PNG generation with `gpt-image-1.5` or `gpt-image-1-mini`, at `1024x1024`, `1536x1024`, or `1024x1536`. Other OpenAI models require an adapter capability update. Account access is validated by OpenAI on explicit requests. API keys are read from the environment or ignored local configuration, never sent to Angular or persisted in SQLite. Provider/model/credential configuration remains server-side and takes effect after restart. Image concurrency and the per-request USD estimate are editable from the header **Settings** dialog and persisted immediately. `Engine__MaxConcurrency` seeds a new database only; saved SQLite settings take precedence on subsequent starts.
+Model capabilities are centralized in `ModelCatalog`. Official planning supports `gpt-6-luna` Responses JSON Schema. Official PNG generation supports `gpt-image-2.6-flare` (default) and `gpt-image-2.6-sunburst`. Quality is explicitly `low`, `medium` (default), `high`, `xhigh`, or `max`; complexity is `low`, `medium`, or `high` (default). Sizes are explicit WIDTHxHEIGHT, multiples of 16 on each edge, edges at most 3840, aspect ratio at most 3:1, total pixels 655,360–8,294,400. `auto` and non-PNG output are not implemented. Old model names have no replacement aliases. Account access is validated by OpenAI on explicit requests. API keys are read from the environment or ignored local configuration, never sent to Angular or persisted in SQLite. Provider/model/credential configuration remains server-side and takes effect after restart. Image concurrency and the per-request USD estimate are editable from the header **Settings** dialog and persisted immediately. `Engine__MaxConcurrency` seeds a new database only; saved SQLite settings take precedence on subsequent starts.
 
 Official references: [Angular release policy](https://angular.dev/reference/releases), [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create), [OpenAI Images API](https://developers.openai.com/api/reference/resources/images/methods/generate).
 
@@ -80,17 +85,30 @@ The official OpenAI provider remains available. To use an OpenAI-compatible gate
 {
   "Engine": {
     "Provider": "OpenAICompatible",
+    "ProviderProfile": "my-gateway-v1",
     "BaseUrl": "https://your-provider.example/api/native/v1/",
-    "ApiKey": "SET_LOCALLY_ONLY",
-    "PromptModel": "gpt-4.1-mini",
-    "ImageModel": "gpt-image-1.5"
+    "CredentialEnvironmentVariable": "IMAGEFLOW_GATEWAY_API_KEY",
+    "PromptModel": "gpt-6-luna",
+    "ImageModel": "gpt-image-2.6-flare",
+    "ImageSize": "1024x1024",
+    "ImageQuality": "medium",
+    "ImageComplexity": "high",
+    "OutputFormat": "png",
+    "CompatibleCapabilities": {
+      "PromptModels": ["gpt-6-luna"],
+      "ImageModels": ["gpt-image-2.6-flare"],
+      "Sizes": ["1024x1024"],
+      "Qualities": ["medium"],
+      "Complexities": ["high"],
+      "Formats": ["png"]
+    }
   }
 }
 ```
 
-Save this only as `src/backend/ImageFlow.Api/appsettings.Local.json` (already ignored). The configured service receives prompts and credentials for its own endpoint. Automatic redirects are disabled. The same explicit model/size validation applies; advertising a model in `/models` alone is not treated as proof of capability. Override `Engine__Provider=Mock` to return to free previews without removing your local settings.
+Save this only as `src/backend/ImageFlow.Api/appsettings.Local.json` (already ignored). Set `IMAGEFLOW_GATEWAY_API_KEY` in the API process environment. Declare only options your gateway actually supports; the example does not verify any gateway. The configured service receives prompts and credentials for its own endpoint. Automatic redirects are disabled. Compatible capabilities are explicitly declared for the Responses JSON Schema / Images base64 PNG adapter, including size, quality and complexity. Official model lifecycles are not inherited by a gateway; advertising a model in `/models` alone is not treated as proof of capability. Override `Engine__Provider=Mock` to return to free previews without removing your local settings.
 
-On 2026-11-19, the user-supplied replacement credential was verified against the supplied compatible service: model listing 200, text response 200, and one .NET API plan → persisted job → PNG flow Completed with one image attempt. Returned image usage was 1,399 total tokens, not a billed monetary cost. Credentials and full live results are not committed; local results are under `.cache/live-provider/`.
+Historical result for the old adapter/models only (not validation of 2.6 or Luna): on 2026-11-19, the user-supplied replacement credential was verified against the supplied compatible service: model listing 200, text response 200, and one .NET API plan → persisted job → PNG flow Completed with one image attempt. Returned image usage was 1,399 total tokens, not a billed monetary cost. Credentials and full live results are not committed; local results are under `.cache/live-provider/`.
 
 Re-run only when paid use is explicitly intended:
 
@@ -111,7 +129,7 @@ Only explicit HTTP 429 rejections retry automatically (bounded attempts, exponen
 
 Finite plans contain 1–20 prompts. Continuous jobs cycle the saved, immutable prompts and require **both** `maxImages` (1–1000) and a positive `budgetUsd`. There are no repeated text-planning calls. The scheduler creates tasks lazily and stops when either cap is reached; pause/resume/cancel remain available. A plan still creates at most one job.
 
-Set a positive **Estimated USD per image request** in the header **Settings** dialog before enabling continuous mode. Zero means no estimate is configured and continuous mode is rejected. Values accept up to six decimal places. Each job snapshots this estimate, provider/model/size, image-count limit and budget at creation. Later price edits affect new jobs only. Changing provider/model/size across restart stops incompatible queued jobs with NeedsAttention.
+Set a positive **Estimated USD per image request** in the header **Settings** dialog before enabling continuous mode. Zero means no estimate is configured and continuous mode is rejected. Values accept up to six decimal places. Each job snapshots this estimate, provider/profile/endpoint/credential reference, adapter version, model/size/quality/complexity/format, attempt limit, image-count limit and budget at creation. Secret values are never persisted. After generation settings change, review and save the estimate again before creating new jobs. Existing jobs retain their old estimates. Later price edits affect new jobs only. Requests use the persisted job snapshot rather than global image defaults. Changing defaults does not remap queued jobs. An unavailable profile/endpoint/credential reference/adapter/capability stops work with NeedsAttention before sending. Rotating a secret behind the same reference is allowed.
 
 Before every image attempt, the same SQLite commit stores the Running task, attempt and estimated USD reservation. Completed and Unknown requests retain their reservation; explicit rejections (including 429) release it, and a retry must reserve again. All outstanding reservations count toward the per-job estimate cap, so simultaneous dispatch cannot overrun it. Continuous Unknown/Failed results stop further dispatch with NeedsAttention. Already-sent calls may finish after a stop and keep their results/reservations. Restart does not reset budgets or quantity counts.
 
@@ -140,7 +158,7 @@ Expand a task in the queue to inspect its immutable prompt, task/attempt IDs, st
    - `NotGeneratedNotCharged`: only after confirming both conditions, release that attempt's **estimate**, move the task to Paused and keep the job paused. This is not a billing refund.
    - `Abandon`: cancel this task while retaining uncertain exposure; never resend it.
 3. For a confirmed ungenerated/uncharged task, separately select **Authorize reviewed retry** and acknowledge a new potentially charged request. This changes only that task to Pending and records the authorization time. The job stays paused.
-4. Resolve other Unknown tasks and authorize any reviewed Paused tasks, then explicitly Resume the job. Existing quantity limits, budget reservations, configured attempt count and provider/model/size compatibility still apply. Cancelled jobs cannot be revived.
+4. Resolve other Unknown tasks and authorize any reviewed Paused tasks, then explicitly Resume the job. Existing quantity limits, budget reservations, snapshotted attempt limit and execution-profile capability checks still apply. Cancelled jobs cannot be revived.
 
 Review and retry commands bind to the latest attempt ID. Stale/duplicate submissions return 409; a unique review-per-attempt index and shared queue mutation gate prevent duplicate estimate releases or authorizations. Evidence and review/authorization timestamps persist in SQLite across restart. Conclusions are recorded once; the UI does not offer a force-retry or an override for an unresolved Unknown outcome. Resuming never retries the historical Unknown attempt automatically.
 
@@ -195,6 +213,10 @@ dotnet ImageFlow.Api.dll --urls http://localhost:5080
 ```
 
 Run the published app from its publish directory as above; set an absolute `Engine__DataDirectory` for a stable production data location. Static assets are included at publish time. Do not commit copied build output.
+
+### Model/configuration upgrade
+
+See [model upgrade and execution guarantees](docs/model-upgrade.md) before restarting with existing data or local settings. Old incomplete jobs are retained for review and cannot execute. No paid API call was made for the upgrade.
 
 ### Database migrations
 

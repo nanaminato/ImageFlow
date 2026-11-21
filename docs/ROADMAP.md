@@ -1,6 +1,6 @@
 # ImageFlow implementation roadmap
 
-## Implementation status — 2026-11-20
+## Implementation status — 2026-11-21
 
 Architecture follow-up: backend split into Domain/Application/Infrastructure/Worker/API assemblies; Angular split into a lazy workspace feature, NgRx Signal Store, HTTP/SSE data access and four presentational components. An explicitly configured compatible HTTPS provider is supported alongside the official OpenAI provider. Live testing remains opt-in.
 
@@ -53,3 +53,10 @@ Manual Unknown review is implemented: task detail/history API and UI, evidence-b
 4. SQLite-backed work survives restart without silent loss or automatic double billing.
 5. Generated images and provenance can be inspected and downloaded.
 6. Real API testing is opt-in; default CI consumes no OpenAI credits.
+
+## Model lifecycle follow-up — implemented 2026-11-21
+
+- Central model capabilities; independent operator-declared gateway support. Official defaults: `gpt-6-luna` and `gpt-image-2.6-flare`. No old aliases or paid capability probes.
+- Durable profile/endpoint/credential-reference/adapter/model/options/retry-limit snapshots drive requests. No credential values in SQLite. Defaults do not remap queued work.
+- Configuration-bound estimates require reconfirmation after generation settings change. Historical incomplete jobs remain readable but cannot execute.
+- Intercepted official plan/image tests validate PNG decode/write/download, request ID/usage, Unknown safety, restart/default isolation, profile mismatch and database upgrade. Account/model access remains unverified until a separately authorized paid test.

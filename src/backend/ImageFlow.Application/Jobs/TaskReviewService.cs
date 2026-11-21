@@ -46,7 +46,7 @@ public sealed class TaskReviewService(IGenerationRepository repository, QueueGat
             var attempt = task.Attempts.OrderByDescending(a => a.StartedAt).FirstOrDefault();
             var review = task.Reviews.SingleOrDefault(r => r.AttemptId == request.AttemptId);
             var job = await repository.GetJob(task.JobId, ct);
-            if (task.Status != "Paused" || attempt?.Id != request.AttemptId || review?.Resolution != "NotGeneratedNotCharged" || review.RetryAuthorizedAt != null || job?.Status != "Paused" || job.Tasks.Any(t => t.Status is "Running" or "Unknown") || task.Attempts.Count >= options.MaxAttempts || !JobLifecycle.CanReserve(job) || (job.Provider != "" && (job.Provider != options.Provider || job.Model != options.ImageModel || job.ImageSize != options.ImageSize)))
+            if (task.Status != "Paused" || attempt?.Id != request.AttemptId || review?.Resolution != "NotGeneratedNotCharged" || review.RetryAuthorizedAt != null || job?.Status != "Paused" || job.Tasks.Any(t => t.Status is "Running" or "Unknown") || task.Attempts.Count >= job.AttemptLimit || !JobLifecycle.CanReserve(job) || !ModelCatalog.CanExecute(options, job))
                 return new(Failure: FailureKind.Conflict, Message: "Retry is not eligible. Check latest review, unresolved outcomes, attempt limit, remaining budget, job cancellation and provider configuration.");
             review.RetryAuthorizedAt = DateTime.UtcNow;
             task.Status = "Pending"; task.NextAttemptAt = null; task.Error = null;

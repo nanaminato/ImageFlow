@@ -2,7 +2,8 @@ namespace ImageFlow;
 
 public sealed record SettingsUpdate(int MaxConcurrency, decimal EstimatedCostPerImageUsd);
 public sealed record SettingsView(string Provider, string PromptModel, string ImageModel, int MaxConcurrency,
- decimal EstimatedCostPerImageUsd, int Revision, int MaxPrompts = 20, int MaxContinuousImages = 1000);
+ decimal EstimatedCostPerImageUsd, int Revision, bool EstimateConfirmed, string ImageSize, string ImageQuality,
+ string ImageComplexity, string OutputFormat, int MaxPrompts = 20, int MaxContinuousImages = 1000);
 public sealed class RuntimeSettingsService(IRuntimeSettingsRepository repository, QueueGate gate, EngineOptions options)
 {
     public async Task Initialize(CancellationToken ct)
@@ -27,11 +28,19 @@ public sealed class RuntimeSettingsService(IRuntimeSettingsRepository repository
             var settings = await repository.Get(ct) ?? throw new InvalidOperationException("Settings not initialized.");
             settings.MaxConcurrency = update.MaxConcurrency;
             settings.EstimatedCostPerImageUsd = update.EstimatedCostPerImageUsd;
+            settings.EstimateConfiguration = options.EstimateConfiguration();
             settings.Revision++;
             await repository.Save(ct);
             return new(View(settings));
         }
         finally { gate.Mutex.Release(); }
     }
-    private SettingsView View(RuntimeSettings settings) => new(options.Provider, options.PromptModel, options.ImageModel, settings.MaxConcurrency, settings.EstimatedCostPerImageUsd, settings.Revision);
+    private SettingsView View(RuntimeSettings settings)
+    {
+        var execution = options.CreateImageRequest("");
+        return new(options.Provider, options.PromptModel, execution.Model, settings.MaxConcurrency,
+            settings.EstimatedCostPerImageUsd, settings.Revision,
+            settings.EstimatedCostPerImageUsd == 0 || settings.EstimateConfiguration == options.EstimateConfiguration(),
+            execution.Size, execution.Quality, execution.Complexity, execution.OutputFormat);
+    }
 }

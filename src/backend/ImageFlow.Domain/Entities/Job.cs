@@ -16,5 +16,13 @@ public class Job
     public string Provider { get; set; } = "";
     public string Model { get; set; } = "";
     public string ImageSize { get; set; } = "";
+    public string ProviderProfile { get; set; } = "";
+    public string Endpoint { get; set; } = "";
+    public string CredentialReference { get; set; } = "";
+    public string AdapterVersion { get; set; } = "";
+    public string ImageQuality { get; set; } = "";
+    public string ImageComplexity { get; set; } = "";
+    public string OutputFormat { get; set; } = "";
+    public int AttemptLimit { get; set; }
     public List<GenerationTask> Tasks { get; set; } = [];
 }

@@ -12,6 +12,8 @@ public sealed class JobService(IGenerationRepository repository, QueueGate gate,
             var plan = await repository.GetPlan(planId, ct);
             if (plan == null) return new(Failure: FailureKind.NotFound);
             var current = await settings.Get(ct);
+            if (!current.EstimateConfirmed)
+                return new(Failure: FailureKind.InvalidInput, Message: "Generation configuration changed. Review and save the per-image estimate in Engine settings before creating a new job.");
             var invalidMode = mode is not ("Finite" or "Continuous");
             var invalidContinuousLimits = mode == "Continuous" && (maxImages is null or < 1 or > 1000 || budgetUsd is null or <= 0);
             var invalidFiniteCount = mode == "Finite" && maxImages != null && maxImages != plan.Prompts.Count;
@@ -19,6 +21,8 @@ public sealed class JobService(IGenerationRepository repository, QueueGate gate,
                 (budgetUsd is { } budget && (decimal.Round(budget, 6) != budget || current.EstimatedCostPerImageUsd <= 0));
             if (invalidMode || invalidContinuousLimits || invalidFiniteCount || invalidBudget)
                 return new(Failure: FailureKind.InvalidInput, Message: "Continuous mode requires 1–1000 images, a positive USD estimate limit and a positive configured per-image estimate (up to six decimal places). Finite image count equals its plan size.");
+            var execution = options.CreateImageRequest("");
+            ModelCatalog.ValidateImage(options, execution);
             var job = new Job
             {
                 PlanId = plan.Id,
@@ -27,8 +31,16 @@ public sealed class JobService(IGenerationRepository repository, QueueGate gate,
                 BudgetUsd = budgetUsd,
                 EstimatedCostPerImageUsd = current.EstimatedCostPerImageUsd,
                 Provider = options.Provider,
-                Model = options.ImageModel,
-                ImageSize = options.ImageSize
+                Model = execution.Model,
+                ImageSize = execution.Size,
+                ProviderProfile = options.ProviderProfile,
+                Endpoint = options.GetBaseUri().AbsoluteUri,
+                CredentialReference = options.CredentialEnvironmentVariable,
+                AdapterVersion = ModelCatalog.AdapterVersion,
+                ImageQuality = execution.Quality,
+                ImageComplexity = execution.Complexity,
+                OutputFormat = execution.OutputFormat,
+                AttemptLimit = options.MaxAttempts
             };
             if (mode == "Finite")
                 job.Tasks = plan.Prompts.Select(x => new GenerationTask { JobId = job.Id, PromptId = x.Id, PromptText = x.Text }).ToList();
@@ -46,6 +58,8 @@ public sealed class JobService(IGenerationRepository repository, QueueGate gate,
         {
             var job = await repository.GetJob(id, ct);
             if (job == null) return new(Failure: FailureKind.NotFound);
+            if (action == "resume" && !ModelCatalog.CanExecute(options, job))
+                return new(Failure: FailureKind.Conflict, Message: "The persisted execution configuration is unavailable. Create a new plan/job explicitly; existing requests will not be remapped.");
             if (action == "resume" && job.Tasks.Any(t => t.Status is "Unknown" or "Paused"))
                 return new(Failure: FailureKind.Conflict, Message: "Resolve Unknown tasks and explicitly authorize reviewed retries before resuming.");
             if (job.Status is "Completed" or "Cancelled" or "NeedsAttention") return new(Failure: FailureKind.Conflict, Message: "Terminal jobs cannot be resumed; Unknown requests require manual provider reconciliation.");

@@ -1,4 +1,19 @@
 <form #form="ngForm" class="engine-settings-form" (ngSubmit)="submit()">
+  @if (settings(); as config) {
+    <p class="hint">
+      {{ 'Image model' | t }}: {{ config.imageModel }} · {{ config.imageSize }} ·
+      {{ 'Quality' | t }}: {{ config.imageQuality }} · {{ 'Complexity' | t }}:
+      {{ config.imageComplexity }} · {{ config.outputFormat }}
+    </p>
+  }
+  @if (settings()?.estimateConfirmed === false) {
+    <p class="error" role="alert">
+      {{
+        'Generation configuration changed. Review and save the per-image estimate before creating new jobs.'
+          | t
+      }}
+    </p>
+  }
   <div class="settings-fields">
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>{{ 'Concurrent image requests' | t }}</mat-label>

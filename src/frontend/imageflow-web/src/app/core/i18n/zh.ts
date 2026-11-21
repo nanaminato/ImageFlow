@@ -1,4 +1,10 @@
 export const zh: Record<string, string> = {
+  'Image model': '图像模型',
+  Quality: '质量',
+  Complexity: '复杂度',
+  ExecutionProfileRequired: '旧任务缺少完整执行配置，请使用新方案创建任务',
+  'Generation configuration changed. Review and save the per-image estimate before creating new jobs.':
+    '生成配置已变更。请核对并保存单张图片预估费用后，再创建新任务。',
   UnknownOutcome: '请求结果未知',
   ProviderFailure: '服务商请求失败',
   ProviderConfigurationChanged: '服务商配置已变更',

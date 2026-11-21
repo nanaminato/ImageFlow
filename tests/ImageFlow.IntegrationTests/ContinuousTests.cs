@@ -201,7 +201,7 @@ public sealed class GatedProvider : IImageGenerationProvider
     readonly Channel<TaskCompletionSource> calls = Channel.CreateUnbounded<TaskCompletionSource>(); int count, active;
     public int Calls => Volatile.Read(ref count); public int Active => Volatile.Read(ref active);
     public async Task<TaskCompletionSource> Next() { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)); return await calls.Reader.ReadAsync(timeout.Token); }
-    public async Task<ImageResult> GenerateAsync(string prompt, CancellationToken ct)
+    public async Task<ImageResult> GenerateAsync(ImageGenerationRequest request, CancellationToken ct)
     {
         Interlocked.Increment(ref count); Interlocked.Increment(ref active); var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); await calls.Writer.WriteAsync(completion, ct);
         try { await completion.Task.WaitAsync(ct); return new ImageResult([1, 2, 3], "png", "image/png", null, null); } finally { Interlocked.Decrement(ref active); }
@@ -210,5 +210,5 @@ public sealed class GatedProvider : IImageGenerationProvider
 public sealed class RejectOnceProvider : IImageGenerationProvider
 {
     int count;
-    public Task<ImageResult> GenerateAsync(string prompt, CancellationToken ct) { if (Interlocked.Increment(ref count) == 1) throw new ProviderFailure("429", true, TimeSpan.FromSeconds(30)); return new MockProvider().GenerateAsync(prompt, ct); }
+    public Task<ImageResult> GenerateAsync(ImageGenerationRequest request, CancellationToken ct) { if (Interlocked.Increment(ref count) == 1) throw new ProviderFailure("429", true, TimeSpan.FromSeconds(30)); return new MockProvider().GenerateAsync(request, ct); }
 }

@@ -108,6 +108,33 @@ test.describe('interface language', () => {
     await expect(page.locator('summary')).toContainText('Original seaside prompt');
   });
 
+  test('shows the generation configuration when an estimate needs reconfirmation', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/settings', (route) =>
+      route.fulfill({
+        json: {
+          provider: 'Mock',
+          promptModel: 'gpt-6-luna',
+          imageModel: 'mock-svg',
+          maxConcurrency: 2,
+          estimatedCostPerImageUsd: 0.01,
+          revision: 1,
+          estimateConfirmed: false,
+          imageSize: '768x512',
+          imageQuality: 'preview',
+          imageComplexity: 'none',
+          outputFormat: 'svg',
+        },
+      }),
+    );
+    await page.goto('/');
+    await page.getByRole('button', { name: '引擎设置' }).click();
+    await expect(page.getByRole('alert')).toContainText('生成配置已变更');
+    await expect(page.getByRole('dialog')).toContainText('mock-svg');
+    await expect(page.getByRole('dialog')).toContainText('768x512');
+  });
+
   test('falls back to English for an unsupported system language', async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'languages', { get: () => ['ja-JP'] });

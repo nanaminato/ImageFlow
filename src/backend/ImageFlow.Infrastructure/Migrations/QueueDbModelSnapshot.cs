@@ -111,16 +111,39 @@ namespace ImageFlow.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AdapterVersion")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AttemptLimit")
+                        .HasColumnType("INTEGER");
+
                     b.Property<decimal?>("BudgetUsd")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CredentialReference")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal>("EstimatedCostPerImageUsd")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("EstimatedExposureUsd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageComplexity")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageQuality")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ImageSize")
@@ -138,10 +161,18 @@ namespace ImageFlow.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("OutputFormat")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("PlanId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderProfile")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -203,6 +234,10 @@ namespace ImageFlow.Api.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("EstimateConfiguration")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("EstimatedCostPerImageUsd")
                         .HasColumnType("TEXT");

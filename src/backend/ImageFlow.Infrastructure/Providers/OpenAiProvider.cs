@@ -6,9 +6,9 @@ namespace ImageFlow;
 
 public class OpenAiProvider(HttpClient http, EngineOptions options) : IPromptPlanningProvider, IImageGenerationProvider
 {
-    async Task<(JsonDocument, string?)> Send(string path, object body, CancellationToken ct)
+    async Task<(JsonDocument, string?)> Send(Uri endpoint, string path, object body, CancellationToken ct)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Post, new Uri(options.GetBaseUri(), path));
+        using var req = new HttpRequestMessage(HttpMethod.Post, new Uri(endpoint, path));
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.GetApiKey());
         req.Content = JsonContent.Create(body);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -31,7 +31,8 @@ public class OpenAiProvider(HttpClient http, EngineOptions options) : IPromptPla
     }
     public async Task<string[]> PlanAsync(string theme, int count, CancellationToken ct)
     {
-        var (doc, _) = await Send("responses", new { model = options.PromptModel, input = $"Create {count} distinct detailed image prompts about: {theme}. Return a JSON object with a prompts array of strings, no other content.", text = new { format = new { type = "json_schema", name = "prompt_plan", strict = true, schema = new { type = "object", properties = new { prompts = new { type = "array", items = new { type = "string" } } }, required = new[] { "prompts" }, additionalProperties = false } } } }, ct);
+        ModelCatalog.ValidatePlanner(options);
+        var (doc, _) = await Send(options.GetBaseUri(), "responses", new { model = options.PromptModel, input = $"Create {count} distinct detailed image prompts about: {theme}. Return a JSON object with a prompts array of strings, no other content.", text = new { format = new { type = "json_schema", name = "prompt_plan", strict = true, schema = new { type = "object", properties = new { prompts = new { type = "array", items = new { type = "string" } } }, required = new[] { "prompts" }, additionalProperties = false } } } }, ct);
         using (doc)
         {
             var text = string.Concat(doc.RootElement.GetProperty("output").EnumerateArray().Where(x => x.TryGetProperty("content", out _)).SelectMany(x => x.GetProperty("content").EnumerateArray()).Where(x => x.GetProperty("type").GetString() == "output_text").Select(x => x.GetProperty("text").GetString()));
@@ -41,13 +42,26 @@ public class OpenAiProvider(HttpClient http, EngineOptions options) : IPromptPla
             return prompts;
         }
     }
-    public async Task<ImageResult> GenerateAsync(string prompt, CancellationToken ct)
+    public async Task<ImageResult> GenerateAsync(ImageGenerationRequest request, CancellationToken ct)
     {
-        var (doc, id) = await Send("images/generations", new { model = options.ImageModel, prompt, n = 1, size = options.ImageSize, output_format = "png" }, ct);
+        ModelCatalog.ValidateImage(options, request);
+        var (doc, id) = await Send(new Uri(request.Endpoint), "images/generations", new {
+            model = request.Model, prompt = request.Prompt, n = 1, size = request.Size,
+            quality = request.Quality, complexity = request.Complexity, output_format = request.OutputFormat
+        }, ct);
         using (doc)
         {
-            try { return new(Convert.FromBase64String(doc.RootElement.GetProperty("data")[0].GetProperty("b64_json").GetString()!), "png", "image/png", doc.RootElement.TryGetProperty("usage", out var u) ? u.GetRawText() : null, id); }
-            catch (Exception e) when (e is KeyNotFoundException or FormatException or InvalidOperationException) { throw new ProviderFailure("Image response could not be decoded; outcome unknown.", unknown: true, requestId: id); }
+            var usage = doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("usage", out var u) ? u.GetRawText() : null;
+            try
+            {
+                var data = doc.RootElement.GetProperty("data");
+                if (data.GetArrayLength() != 1) throw new FormatException();
+                var bytes = Convert.FromBase64String(data[0].GetProperty("b64_json").GetString() ?? "");
+                PngOutput.Validate(bytes);
+                return new(bytes, "png", "image/png", usage, id);
+            }
+            catch (Exception e) when (e is KeyNotFoundException or FormatException or InvalidOperationException or ArgumentException)
+            { throw new ProviderFailure("Image response is missing or is not a complete PNG; outcome unknown.", unknown: true, requestId: id, usageJson: usage); }
         }
     }
 }
