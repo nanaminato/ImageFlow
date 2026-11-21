@@ -90,8 +90,8 @@
         ><span aria-hidden="true">/</span><strong>{{ pageLabel() | t }}</strong>
       </div>
       <div class="header-tools">
-        <button mat-button type="button" class="clear-workspace-button" (click)="openClearWorkspace()" [disabled]="store.busy()">
-          {{ 'Clear workspace' | t }}
+        <button mat-button type="button" class="deletion-manager-button" (click)="openDeletion()" [disabled]="store.busy()">
+          {{ 'Manage deletion' | t }}
         </button>
         <select
           class="language-select"
@@ -133,8 +133,8 @@
       </div>
     </header>
     <main class="app-main" id="workspace-main">
-      @if (items.pendingFiles()) {
-        <p class="hint" role="status">{{ 'Deletion was saved. Some image files are in use; cleanup will retry automatically.' | t }} ({{ items.pendingFiles() }})</p>
+      @if (pendingFiles()) {
+        <p class="hint" role="status">{{ 'Deletion was saved. Some image files are in use; cleanup will retry automatically.' | t }} ({{ pendingFiles() }})</p>
       }
       @if (store.error()) {
         <div class="error" role="alert">{{ store.error() }}</div>

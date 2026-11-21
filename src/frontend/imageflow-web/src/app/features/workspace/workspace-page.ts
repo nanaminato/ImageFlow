@@ -1,22 +1,22 @@
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { filter, map } from 'rxjs';
+import { filter, map, firstValueFrom } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { EngineSettingsDialog } from './components/engine-settings/engine-settings-dialog';
-import { ClearWorkspaceDialog } from './components/clear-workspace/clear-workspace-dialog';
+import { DeletePlansDialog } from './components/delete-plans/delete-plans-dialog';
+import { ItemDeletionResult } from '../../core/models/generation.models';
 import { WorkspaceStore } from './data-access/workspace.store';
 import { WorkspaceViewState } from './data-access/workspace-view-state';
-import { ItemActions } from './data-access/item-actions';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-workspace-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [WorkspaceStore, WorkspaceViewState, ItemActions],
+  providers: [WorkspaceStore, WorkspaceViewState],
   imports: [
     TranslatePipe,
     MatButtonModule,
@@ -31,7 +31,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 export class WorkspacePage {
   readonly i18n = inject(LanguageService);
   readonly store = inject(WorkspaceStore);
-  readonly items = inject(ItemActions);
+  readonly pendingFiles = signal(0);
   private readonly router = inject(Router);
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -65,12 +65,17 @@ export class WorkspacePage {
       autoFocus: 'first-heading',
     });
   }
-  openClearWorkspace(): void {
-    this.dialog.open(ClearWorkspaceDialog, {
-      width: '560px',
-      maxWidth: 'calc(100vw - 2rem)',
-      injector: this.injector,
-      autoFocus: 'button[mat-dialog-close]',
-    });
+  async openDeletion(): Promise<void> {
+    if (this.store.busy() || this.dialog.openDialogs.length) return;
+    this.store.dismissError();
+    const result = await firstValueFrom(this.dialog.open<DeletePlansDialog, void, ItemDeletionResult>(DeletePlansDialog, {
+      width: '680px', maxWidth: 'calc(100vw - 2rem)', injector: this.injector, autoFocus: 'button[mat-dialog-close]',
+    }).afterClosed());
+    if (!result) return;
+    this.pendingFiles.set(result.pendingImageFiles);
+    const tree = this.router.parseUrl(this.router.url);
+    if (tree.queryParams['plan'] && !this.store.plans().some(p => p.id === tree.queryParams['plan'])) delete tree.queryParams['plan'];
+    if (tree.queryParams['job'] && !this.store.jobs().some(j => j.id === tree.queryParams['job'])) delete tree.queryParams['job'];
+    await this.router.navigateByUrl(tree);
   }
 }

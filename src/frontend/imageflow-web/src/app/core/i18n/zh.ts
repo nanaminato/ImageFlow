@@ -1,4 +1,27 @@
 export const zh: Record<string, string> = {
+  'Selected plans and their jobs, images and history will be deleted. This cannot be undone.': '将删除选中的方案及关联任务、图片和历史记录，无法撤销。',
+  'Generation is in progress. Wait before deleting this plan.': '正在生成，请等待请求结束后再删除此方案。',
+  'Created': '创建于',
+  'Creation time unavailable': '创建时间未记录',
+  'Newest first. Times are shown in your local time zone.': '按创建时间从新到旧排序，时间使用本地时区。',
+  'Not queued': '未入队',
+  'Generating': '生成中',
+  'Collection preview': '作品集预览',
+  'Preview image': '预览图片',
+  'Preview unavailable': '预览不可用',
+  'No prompts': '暂无提示词',
+  'View prompts': '查看提示词',
+  'Reference': '编号',
+
+  'Manage deletion': '删除管理',
+  'Choose prompt plans to delete': '选择要删除的提示词方案',
+  'Confirm deletion': '确认删除',
+  'Review deletion': '核对删除范围',
+  'Back to selection': '返回选择',
+  'Select prompt plans. Their queue jobs, collections, usage and review history will be deleted together.': '请选择提示词方案，关联的队列任务、作品集、用量和审核记录将一并删除。',
+  'Expand details': '展开详情',
+  'Collapse details': '收起详情',
+
   'One or more selected items no longer exist. Refresh the list and select again.': '部分选中项已不存在，请刷新列表后重新选择。',
 
   'Bulk selection': '批量选择',

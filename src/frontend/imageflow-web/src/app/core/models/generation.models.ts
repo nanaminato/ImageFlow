@@ -5,6 +5,7 @@ export interface Prompt {
 export interface Plan {
   id: string;
   theme: string;
+  createdAt?: string;
   prompts: Prompt[];
 }
 export type JobStatus = 'Active' | 'Paused' | 'Cancelled' | 'Completed' | 'NeedsAttention';

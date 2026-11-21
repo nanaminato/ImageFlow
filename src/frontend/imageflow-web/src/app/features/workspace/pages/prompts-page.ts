@@ -14,14 +14,11 @@ import { EnqueueInput } from '../../../core/models/generation.models';
 import { PromptEditor } from '../components/prompt-editor/prompt-editor';
 import { WorkspaceStore } from '../data-access/workspace.store';
 import { WorkspaceViewState } from '../data-access/workspace-view-state';
-import { ItemActions } from '../data-access/item-actions';
-import { ItemSelection } from '../data-access/item-selection';
-import { BulkActions } from '../components/bulk-actions/bulk-actions';
 
 @Component({
   selector: 'app-prompts-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, FormsModule, RouterLink, PromptEditor, BulkActions],
+  imports: [TranslatePipe, FormsModule, RouterLink, PromptEditor],
   template: `
     <section class="hero page-heading">
       <div>
@@ -47,13 +44,8 @@ import { BulkActions } from '../components/bulk-actions/bulk-actions';
             <option value="queued">{{ 'Queued' | t }}</option>
           </select></label
         >
-        <app-bulk-actions [visibleIds]="visibleIds()" [selectedIds]="selection.ids()" [selectedCount]="selectedPlans().length"
-            [busy]="store.busy()" (toggleAll)="selection.toggleAll($event)" (clear)="selection.clear()" (remove)="items.deletePlans(selectedPlans())" />
         <div class="managed-plan-list">
           @for (plan of filteredPlans(); track plan.id) {
-            <div class="managed-plan-row">
-            <input type="checkbox" class="item-checkbox" [checked]="selection.ids().has(plan.id)" [disabled]="store.busy()"
-              [attr.aria-label]="('Select plan' | t) + ': ' + plan.theme" (change)="selection.toggle(plan.id)" />
             <a
               class="managed-plan"
               [class.is-selected]="store.selectedPlanId() === plan.id"
@@ -66,9 +58,6 @@ import { BulkActions } from '../components/bulk-actions/bulk-actions';
                 {{ (store.queuedPlanIds().has(plan.id) ? 'Queued' : 'Draft') | t }}</span
               >
             </a>
-            <button type="button" class="item-delete-button" [disabled]="store.busy()"
-              [attr.aria-label]="('Delete plan' | t) + ': ' + plan.theme" (click)="items.deletePlan(plan)">{{ 'Delete' | t }}</button>
-            </div>
           } @empty {
             <p class="empty">{{ 'No matching plans.' | t }}</p>
           }
@@ -110,10 +99,6 @@ import { BulkActions } from '../components/bulk-actions/bulk-actions';
 export class PromptsPage {
   readonly store = inject(WorkspaceStore);
   readonly view = inject(WorkspaceViewState);
-  readonly items = inject(ItemActions);
-  readonly selection = new ItemSelection();
-  readonly selectedPlans = computed(() => this.store.plans().filter(p => this.selection.ids().has(p.id)));
-  readonly visibleIds = computed(() => this.filteredPlans().map(p => p.id));
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly params = toSignal(inject(ActivatedRoute).queryParamMap);

@@ -97,8 +97,9 @@ test.describe('interface language', () => {
       }),
     );
     await page.goto('/queue');
+    await page.locator('.job-summary').click();
     await expect(page.getByRole('button', { name: '继续', exact: true })).toBeVisible();
-    await page.locator('summary').click();
+    await page.locator('.task-list summary').click();
     await expect(page.getByRole('heading', { name: '核查未知结果' })).toBeVisible();
     await page.getByLabel('服务商记录依据', { exact: true }).fill('Checked provider records');
     await page.getByLabel('语言', { exact: true }).selectOption('en');
@@ -107,7 +108,7 @@ test.describe('interface language', () => {
       'Checked provider records',
     );
     await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
-    await expect(page.locator('summary')).toContainText('Original seaside prompt');
+    await expect(page.locator('.task-list summary')).toContainText('Original seaside prompt');
   });
 
   test('shows the generation configuration when an estimate needs reconfirmation', async ({

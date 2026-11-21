@@ -11,6 +11,7 @@ test('plan, edit, queue and view generated collection', async ({ page }) => {
   await expect(page.getByText('2 / 2 completed', { exact: true })).toBeVisible({ timeout: 15000 });
   await expect(page).toHaveURL(/\/queue\?plan=/);
   await expect(page.locator('app-prompt-editor')).toHaveCount(0);
+  await page.locator('.job-summary').click();
   await page.getByRole('link', { name: 'View images', exact: true }).click();
   await expect(page).toHaveURL(/\/gallery\?job=/);
   await expect(page.locator('.gallery img')).toHaveCount(2);
@@ -80,11 +81,13 @@ test('engine settings stay off the main page, open in a dialog and persist', asy
   await page.getByLabel('Maximum continuous images').fill('5');
   await page.getByLabel('Estimated budget limit (USD)').fill('0.025');
   await page.getByRole('button', { name: 'Save & queue collection' }).click();
+  await page.locator('.job-summary').first().click();
   const job = page.locator('article.job').filter({ hasText: 'Stopped: BudgetLimit' });
   await expect(job).toBeVisible({ timeout: 15000 });
   await expect(job.getByText('2 / 5 completed', { exact: true })).toBeVisible();
   await expect(job).toContainText('$0.02');
   await page.reload();
+  await page.locator('.job-summary').first().click();
   await expect(
     page.locator('article.job').filter({ hasText: 'Stopped: BudgetLimit' }),
   ).toBeVisible();
@@ -167,6 +170,7 @@ test('manual review does not implicitly retry or resume (intercepted API)', asyn
     if (r.method() === 'POST' && !r.url().includes('/api/v1/tasks/')) otherPosts++;
   });
   await page.goto('/queue');
+  await page.locator('.job-summary').click();
   await page.getByText('Unknown · Uncertain image request', { exact: true }).click();
   await expect(page.getByText('req-review-test', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Record review without retry' })).toBeDisabled();
@@ -187,6 +191,7 @@ test('manual review does not implicitly retry or resume (intercepted API)', asyn
   expect(otherPosts).toBe(0);
   await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
   await page.reload();
+  await page.locator('.job-summary').click();
   await page.getByText('Pending · Uncertain image request', { exact: true }).click();
   await expect(
     page.getByText('Provider billing checked: no output and no charge.', { exact: true }),

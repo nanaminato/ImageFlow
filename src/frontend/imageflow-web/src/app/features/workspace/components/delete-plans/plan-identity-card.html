@@ -1,0 +1,31 @@
+<div class="plan-identity-heading">
+  <strong>{{ plan().theme }}</strong>
+  <span class="status" [attr.data-status]="status()">{{ status() | t }}</span>
+</div>
+<p class="plan-creation-time">
+  @if (createdAt(); as date) {
+    {{ 'Created' | t }} <time [attr.datetime]="date.toISOString()">{{ formattedTime() }}</time>
+  } @else { {{ 'Creation time unavailable' | t }} }
+</p>
+@if (status() === 'Generating') { <p class="plan-running-hint">{{ 'Generation is in progress. Wait before deleting this plan.' | t }}</p> }
+@if (images().length) {
+  <div class="deletion-thumbnails" [attr.aria-label]="'Collection preview' | t">
+    @for (image of images().slice(0, 3); track image.id) {
+      <button type="button" class="deletion-thumbnail" [disabled]="failedImages().has(image.id)"
+        [attr.aria-label]="('Preview image' | t) + ': ' + image.promptText" (click)="preview(image)">
+        @if (!failedImages().has(image.id)) {
+          <img [src]="'/api/v1/images/' + image.id" [alt]="image.promptText" loading="lazy" (error)="failed(image.id)" />
+        } @else { <span>{{ 'Preview unavailable' | t }}</span> }
+      </button>
+    }
+    @if (images().length > 3) { <span class="hint">+{{ images().length - 3 }}</span> }
+  </div>
+} @else {
+  <p class="deletion-prompt-excerpt">{{ plan().prompts[0]?.text || ('No prompts' | t) }}</p>
+}
+<p class="plan-identity-counts">{{ 'Prompts' | t }}: {{ plan().prompts.length }} · {{ 'Jobs' | t }}: {{ jobs().length }} · {{ 'Images' | t }}: {{ images().length }}</p>
+<details class="deletion-prompt-preview">
+  <summary>{{ 'View prompts' | t }}</summary>
+  <ol>@for (prompt of plan().prompts; track prompt.id) { <li>{{ prompt.text }}</li> }</ol>
+</details>
+<small class="plan-identity-id" [title]="plan().id">{{ 'Reference' | t }} {{ plan().id.slice(0, 8) }}</small>

@@ -7,29 +7,21 @@
   </div>
   @for (job of jobs(); track job.id) {
     <article class="job">
-      <label class="selection-label">
-        <input type="checkbox" [checked]="selectedIds().has(job.id)" [disabled]="busy()"
-          [attr.aria-label]="('Select job' | t) + ': ' + (planNames()[job.planId] || job.id)" (change)="toggleSelection.emit(job.id)" />
-        {{ 'Select job' | t }}
-      </label>
-      @if (planNames()[job.planId]) {
-        <h3 class="job-name">{{ planNames()[job.planId] }}</h3>
-      }
-      <div class="job-top">
-        <div class="job-identity">
-          <code class="job-id">{{ job.id.slice(0, 8) }}</code>
-          <span class="status" [attr.data-status]="job.status">{{ job.status | t }}</span>
-        </div>
-        <span class="job-mode">{{ job.mode | t }}</span>
-      </div>
-      <p class="job-progress">
-        {{ completed(job) }} / {{ job.mode === 'Continuous' ? job.maxImages : job.tasks.length }}
-        {{ 'completed' | t }}
-      </p>
-      <mat-progress-bar
-        mode="determinate"
-        [value]="(100 * completed(job)) / (job.maxImages || job.tasks.length || 1)"
-      />
+      <details class="job-disclosure" [open]="expanded().has(job.id)" (toggle)="setExpanded(job.id, $any($event.target).open)">
+        <summary class="job-summary">
+          <span class="job-summary-main">
+            <strong class="job-name">{{ planNames()[job.planId] || job.id.slice(0, 8) }}</strong>
+            <span class="job-identity"><code class="job-id">{{ job.id.slice(0, 8) }}</code>
+              <span class="status" [attr.data-status]="job.status">{{ job.status | t }}</span>
+            </span>
+          </span>
+          <span class="job-progress">{{ completed(job) }} / {{ job.mode === 'Continuous' ? job.maxImages : job.tasks.length }} {{ 'completed' | t }}</span>
+          <span class="job-toggle-label">{{ (expanded().has(job.id) ? 'Collapse details' : 'Expand details') | t }}</span>
+          <mat-progress-bar mode="determinate" [value]="(100 * completed(job)) / (job.maxImages || job.tasks.length || 1)" />
+        </summary>
+        @if (expanded().has(job.id)) {
+        <div class="job-expanded-content">
+        <p class="hint">{{ job.mode | t }}</p>
       <p class="hint job-estimate">
         {{ 'Estimated exposure (includes outstanding/unknown):' | t }} ${{
           job.estimatedExposureUsd | number: '1.2-6'
@@ -43,7 +35,6 @@
         <p class="stop-reason">{{ 'Stopped:' | t }} {{ job.stopReason | t }}</p>
       }
       <div class="actions">
-        <button mat-button class="item-delete-button" [disabled]="busy()" (click)="remove.emit(job)">{{ 'Delete job' | t }}</button>
         <a mat-button routerLink="/prompts" [queryParams]="{ plan: job.planId }">{{
           'View prompt plan' | t
         }}</a>
@@ -82,6 +73,9 @@
           </details>
         }
       </div>
+        </div>
+        }
+      </details>
     </article>
   } @empty {
     <div class="empty-state">

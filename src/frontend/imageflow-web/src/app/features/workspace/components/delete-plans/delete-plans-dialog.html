@@ -1,0 +1,46 @@
+<h2 mat-dialog-title>{{ (reviewIds() ? 'Confirm deletion' : 'Choose prompt plans to delete') | t }}</h2>
+<mat-dialog-content>
+  @if (!reviewIds()) {
+    <p>{{ 'Select prompt plans. Their queue jobs, collections, usage and review history will be deleted together.' | t }}</p>
+    <p class="hint">{{ 'Newest first. Times are shown in your local time zone.' | t }} {{ timeZone }}</p>
+    <label class="filter-field">{{ 'Search plans' | t }}<input type="search" [ngModel]="search()" (ngModelChange)="search.set($event)" /></label>
+    <div class="bulk-actions">
+      <label class="selection-label"><input type="checkbox" [checked]="allVisible()" [indeterminate]="someVisible() && !allVisible()"
+        [disabled]="!visibleIds().length || store.busy()" (change)="selection.toggleAll(visibleIds())" />{{ 'Select all results' | t }}</label>
+      <span role="status">{{ 'Selected' | t }}: {{ selected().length }}</span>
+      <button mat-button (click)="selection.clear()" [disabled]="!selected().length || store.busy()">{{ 'Clear selection' | t }}</button>
+    </div>
+    <div class="deletion-plan-list">
+      @for (plan of filtered(); track plan.id) {
+        <article class="deletion-plan-card" [class.is-selected]="selection.ids().has(plan.id)">
+          <input type="checkbox" [checked]="selection.ids().has(plan.id)" [disabled]="store.busy()"
+            [attr.aria-label]="('Select plan' | t) + ': ' + plan.theme" (change)="selection.toggle(plan.id)" />
+          <app-plan-identity-card [plan]="plan" [jobs]="planJobs().get(plan.id) ?? []" [showSeconds]="secondsRequired().has(plan.id)" />
+        </article>
+      } @empty { <p class="hint">{{ 'No matching plans.' | t }}</p> }
+    </div>
+    @if (selected().length > 1000) { <p class="error">{{ 'Select at most 1000 items per batch.' | t }}</p> }
+  } @else {
+    <p class="batch-confirm-count" role="status">{{ 'Selected' | t }}: {{ reviewIds()!.length }} {{ 'Plans' | t }} · {{ 'Jobs' | t }}: {{ jobs().length }} · {{ 'Images' | t }}: {{ imageCount() }}</p>
+    <div class="deletion-plan-list deletion-review-cards">
+      @for (plan of selected(); track plan.id) {
+        <article class="deletion-plan-card">
+          <app-plan-identity-card [plan]="plan" [jobs]="planJobs().get(plan.id) ?? []" [showSeconds]="secondsRequired().has(plan.id)" />
+        </article>
+      }
+    </div>
+    <p class="hint">{{ 'Selected plans and their jobs, images and history will be deleted. This cannot be undone.' | t }}</p>
+    @if (running()) { <p class="error" role="alert">{{ 'Pause jobs and wait for in-flight requests to finish before deleting.' | t }}</p> }
+    @if (missing()) { <p class="error" role="alert">{{ 'One or more selected items no longer exist. Refresh the list and select again.' | t }}</p> }
+  }
+  @if (store.error()) { <p class="error" role="alert">{{ store.error() | t }}</p> }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close [disabled]="submitting()">{{ 'Cancel' | t }}</button>
+  @if (reviewIds()) {
+    <button mat-button (click)="back()" [disabled]="submitting()">{{ 'Back to selection' | t }}</button>
+    <button mat-flat-button class="clear-confirm-button" (click)="remove()" [disabled]="submitting() || store.busy() || running() || missing()">{{ 'Permanently delete' | t }}</button>
+  } @else {
+    <button mat-flat-button (click)="review()" [disabled]="!selected().length || selected().length > 1000 || store.busy()">{{ 'Review deletion' | t }}</button>
+  }
+</mat-dialog-actions>

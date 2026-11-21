@@ -105,6 +105,7 @@ export const WorkspaceStore = signalStore(
       }
     };
     return {
+      dismissError() { patchState(store, { error: '' }); },
       async deleteItem(target: DeleteTarget): Promise<ItemDeletionResult | null> {
         let result: ItemDeletionResult | null = null;
         await perform(async () => {

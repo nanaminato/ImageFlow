@@ -6,14 +6,11 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { ImageGallery } from '../components/image-gallery/image-gallery';
 import { WorkspaceStore } from '../data-access/workspace.store';
 import { WorkspaceViewState } from '../data-access/workspace-view-state';
-import { ItemActions } from '../data-access/item-actions';
-import { ItemSelection } from '../data-access/item-selection';
-import { BulkActions } from '../components/bulk-actions/bulk-actions';
 
 @Component({
   selector: 'app-gallery-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, FormsModule, RouterLink, ImageGallery, BulkActions],
+  imports: [TranslatePipe, FormsModule, RouterLink, ImageGallery],
   template: `
     <section class="hero page-heading">
       <div>
@@ -59,11 +56,8 @@ import { BulkActions } from '../components/bulk-actions/bulk-actions';
         >{{ filteredImages().length }} / {{ store.images().length }} {{ 'images' | t }}</span
       >
     </section>
-    <app-bulk-actions [visibleIds]="visibleIds()" [selectedIds]="selection.ids()" [selectedCount]="selectedImages().length"
-      [busy]="store.busy()" (toggleAll)="selection.toggleAll($event)" (clear)="selection.clear()" (remove)="items.deleteImages(selectedImages())" />
     @if (filteredImages().length || !store.images().length) {
-      <app-image-gallery [images]="filteredImages()" [busy]="store.busy()" (remove)="items.deleteImage($event)"
-        [selectedIds]="selection.ids()" (toggleSelection)="selection.toggle($event)" />
+      <app-image-gallery [images]="filteredImages()" />
     } @else {
       <div class="panel empty-state">
         <p>{{ 'No matching images.' | t }}</p>
@@ -74,10 +68,6 @@ import { BulkActions } from '../components/bulk-actions/bulk-actions';
 export class GalleryPage {
   readonly store = inject(WorkspaceStore);
   readonly view = inject(WorkspaceViewState);
-  readonly items = inject(ItemActions);
-  readonly selection = new ItemSelection();
-  readonly selectedImages = computed(() => this.store.images().filter(t => this.selection.ids().has(t.id)));
-  readonly visibleIds = computed(() => this.filteredImages().map(t => t.id));
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.queryParamMap);

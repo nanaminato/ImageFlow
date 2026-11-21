@@ -116,6 +116,7 @@ test('separate management pages preserve drafts and support search and filters',
   await expect(page.getByRole('button', { name: 'Already queued' })).toBeDisabled();
   await page.getByRole('link', { name: 'View this plan in queue' }).click();
   await expect(page.locator('article.job')).toHaveCount(1);
+  await page.locator('.job-summary').click();
   await page.getByRole('link', { name: 'View images', exact: true }).click();
   await expect(page).toHaveURL(/\/gallery\?job=job-beta/);
   await expect(page.locator('.gallery img')).toHaveCount(1);
